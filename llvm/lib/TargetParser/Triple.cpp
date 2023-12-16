@@ -75,6 +75,7 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case systemz:        return "s390x";
   case tce:            return "tce";
   case tcele:          return "tcele";
+  case temple:         return "temple";
   case thumb:          return "thumb";
   case thumbeb:        return "thumbeb";
   case ve:             return "ve";
@@ -347,6 +348,7 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("systemz", systemz)
     .Case("tce", tce)
     .Case("tcele", tcele)
+    .Case("temple", temple)
     .Case("thumb", thumb)
     .Case("thumbeb", thumbeb)
     .Case("x86", x86)
@@ -492,6 +494,7 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Cases("sparcv9", "sparc64", Triple::sparcv9)
     .Case("tce", Triple::tce)
     .Case("tcele", Triple::tcele)
+    .Case("temple", Triple::temple)
     .Case("xcore", Triple::xcore)
     .Case("nvptx", Triple::nvptx)
     .Case("nvptx64", Triple::nvptx64)
@@ -851,6 +854,7 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::spir:
   case Triple::tce:
   case Triple::tcele:
+  case Triple::temple:
   case Triple::thumbeb:
   case Triple::ve:
   case Triple::xcore:
@@ -1399,6 +1403,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
 
   case llvm::Triple::avr:
   case llvm::Triple::msp430:
+  case llvm::Triple::temple:
     return 16;
 
   case llvm::Triple::aarch64_32:
@@ -1488,6 +1493,7 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::bpfel:
   case Triple::msp430:
   case Triple::systemz:
+  case Triple::temple:
   case Triple::ve:
     T.setArch(UnknownArch);
     break;
@@ -1576,6 +1582,7 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::sparcel:
   case Triple::tce:
   case Triple::tcele:
+  case Triple::temple:
   case Triple::xcore:
   case Triple::xtensa:
     T.setArch(UnknownArch);
@@ -1715,6 +1722,7 @@ Triple Triple::getLittleEndianArchVariant() const {
   case Triple::lanai:
   case Triple::sparcv9:
   case Triple::systemz:
+  case Triple::temple:
   case Triple::m68k:
 
   // ARM is intentionally unsupported here, changing the architecture would
