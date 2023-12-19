@@ -67,7 +67,8 @@ class TempleInst<dag outs, dag ins, string asmstr, InstrItinClass itin,
 // Format F instruction class in Temple : <|opcode|ra|>
 //===----------------------------------------------------------------------===//
 
-class FF<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list<dag> pattern = []>
+class FF<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
+         list<dag> pattern = []>
     : TempleInst<outs, ins, asmstr, itin, FrmF, pattern> {
   field bits<8> Inst;
   bits<5> ra;
@@ -84,7 +85,8 @@ class FF<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list
 // Format F no operand instruction class in Temple : <|opcode|>
 //===----------------------------------------------------------------------===//
 
-class FFnoOP<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list<dag> pattern = []>
+class FFnoOP<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
+             list<dag> pattern = []>
     : TempleInst<outs, ins, asmstr, itin, FrmF, pattern> {
   field bits<8> Inst;
 
@@ -101,7 +103,8 @@ class FFnoOP<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, 
 // Format J instruction class in Temple : <|opcode|ra|cond|rb|>
 //===----------------------------------------------------------------------===//
 
-class FJ<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list<dag> pattern = []>
+class FJ<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
+         list<dag> pattern = []>
     : TempleInst<outs, ins, asmstr, itin, FrmJ, pattern> {
   field bits<16> Inst;
   bits<5> ra;
@@ -121,7 +124,8 @@ class FJ<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list
 // Format I instruction class in Temple : <|opcode|immediate|>
 //===----------------------------------------------------------------------===//
 
-class FI<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list<dag> pattern = []>
+class FI<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
+         list<dag> pattern = []>
     : TempleInst<outs, ins, asmstr, itin, FrmI, pattern> {
   field bits<24> Inst;
   bits<16> imm16;
@@ -134,8 +138,8 @@ class FI<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin, list
 }
 
 // Pseudo instructions
-class Pseudo<dag outs, dag ins, list<dag> pattern=[]>
-: TempleInst<outs, ins, "", IIPseudo, Pseudo, pattern> {
+class Pseudo<dag outs, dag ins, list<dag> pattern = []>
+    : TempleInst<outs, ins, "", IIPseudo, Pseudo, pattern> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
 }

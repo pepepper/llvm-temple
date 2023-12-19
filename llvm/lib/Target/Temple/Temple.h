@@ -17,6 +17,7 @@
 #define LLVM_LIB_TARGET_TEMPLE_TEMPLE_H
 
 #include "MCTargetDesc/TempleBaseInfo.h"
+#include "llvm/PassRegistry.h"
 
 namespace llvm {
 class AsmPrinter;
@@ -34,7 +35,9 @@ bool LowerTempleMachineOperandToMCOperand(const MachineOperand &MO,
                                           const AsmPrinter &AP);
 
 FunctionPass *createTempleISelDag(TempleTargetMachine &TM);
+FunctionPass *createTempleExpandPseudoPass();
 
+void initializeTempleExpandPseudoPass(PassRegistry &);
 } // namespace llvm
 
 #endif

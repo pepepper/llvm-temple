@@ -629,8 +629,6 @@ const char *TempleTargetLowering::getTargetNodeName(unsigned Opcode) const {
     return "TempleISD::SELECT_CC";
   case TempleISD::RET:
     return "TempleISD::RET";
-  case TempleISD::SETIGPR:
-    return "TempleISD::SETIGPR";
   }
   return nullptr;
 }

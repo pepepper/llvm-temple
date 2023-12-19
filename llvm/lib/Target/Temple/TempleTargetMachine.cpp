@@ -22,6 +22,7 @@
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/PassRegistry.h"
 #include "llvm/Support/CodeGen.h"
 #include "llvm/Target/TargetOptions.h"
 
@@ -31,6 +32,8 @@ using namespace llvm;
 
 extern "C" void LLVMInitializeTempleTarget() {
   RegisterTargetMachine<TempleTargetMachine> X(getTheTempleTarget());
+  PassRegistry &Registry = *PassRegistry::getPassRegistry();
+  initializeTempleExpandPseudoPass(Registry);
 }
 
 static std::string computeDataLayout(const Triple &TT) {
@@ -70,6 +73,7 @@ public:
 
   bool addInstSelector() override;
   void addPreEmitPass() override;
+  void addPreSched2() override;
 };
 } // namespace
 
@@ -84,3 +88,7 @@ bool TemplePassConfig::addInstSelector() {
 }
 
 void TemplePassConfig::addPreEmitPass() { addPass(&BranchRelaxationPassID); }
+
+void TemplePassConfig::addPreSched2() {
+  addPass(createTempleExpandPseudoPass());
+}

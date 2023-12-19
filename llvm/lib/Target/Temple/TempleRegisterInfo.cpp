@@ -64,20 +64,15 @@ bool TempleRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MachineBasicBlock &MBB = *MI.getParent();
 
-  if (!isInt<10>(Offset)) {
-    unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPRInRegClass);
-    BuildMI(MBB, II, DL, TII->get(Temple::MOVE))
-        .addReg(Temple::T0); // stash Acc
+    unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPROutRegClass);
     BuildMI(MBB, II, DL, TII->get(Temple::SETI)).addImm(Offset);
     BuildMI(MBB, II, DL, TII->get(Temple::ADD)).addReg(FrameReg);
-    BuildMI(MBB, II, DL, TII->get(Temple::MOVE)).addReg(ScratchReg);
-    BuildMI(MBB, II, DL, TII->get(Temple::SETI)).addImm(0); // restore Acc
-    BuildMI(MBB, II, DL, TII->get(Temple::ADD)).addReg(Temple::T0);
+    BuildMI(MBB, II, DL, TII->get(Temple::MOVE)).addReg(ScratchReg,RegState::Define);
     Offset = 0;
     FrameReg = ScratchReg;
-  }
 
   MI.getOperand(FIOperandNum).ChangeToRegister(FrameReg, false);
+  return false;
 }
 
 Register TempleRegisterInfo::getFrameRegister(const MachineFunction &MF) const {

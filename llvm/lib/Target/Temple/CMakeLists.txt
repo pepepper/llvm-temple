@@ -27,6 +27,7 @@ add_llvm_target(
   TempleRegisterInfo.cpp
   TempleSubtarget.cpp
   TempleTargetMachine.cpp
+  TempleExpandPseudoInst.cpp
 
  LINK_COMPONENTS
  Analysis

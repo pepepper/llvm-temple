@@ -52,15 +52,15 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
   }
   LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
 
-  //   if (Node->getOpcode() == ISD::FrameIndex) {
-  //     SDLoc DL(Node);
-  //     SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
-  //     int FI = dyn_cast<FrameIndexSDNode>(Node)->getIndex();
-  //     EVT VT = Node->getValueType(0);
-  //     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
-  //     ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, VT, TFI,
-  //     Imm)); return;
-  //   }
+  if (Node->getOpcode() == ISD::FrameIndex) {
+    SDLoc DL(Node);
+    SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
+    int FI = dyn_cast<FrameIndexSDNode>(Node)->getIndex();
+    EVT VT = Node->getValueType(0);
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
+    ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, VT, TFI, Imm));
+    return;
+  }
 
   //   if (Node->getOpcode() == ISD::BR) {
   //     SDLoc DL(Node);

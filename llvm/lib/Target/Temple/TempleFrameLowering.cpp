@@ -58,21 +58,12 @@ void TempleFrameLowering::adjustReg(MachineBasicBlock &MBB,
   const TempleInstrInfo *TII = STI.getInstrInfo();
 
   if (isInt<16>(Val)) {
-    BuildMI(MBB, MBBI, DL, TII->get(Temple::MOVE))
-        .addReg(Temple::T0)
-        .setMIFlag(Flag); // stash Acc reg
     BuildMI(MBB, MBBI, DL, TII->get(Temple::SETI)).addImm(Val).setMIFlag(Flag);
     BuildMI(MBB, MBBI, DL, TII->get(Temple::ADD))
         .addReg(SrcReg)
         .setMIFlag(Flag);
     BuildMI(MBB, MBBI, DL, TII->get(Temple::MOVE))
-        .addImm(DestReg)
-        .setMIFlag(Flag);
-    BuildMI(MBB, MBBI, DL, TII->get(Temple::NOR))
-        .addReg(Temple::ALLONE) // clear Acc
-        .setMIFlag(Flag);       // restore Acc reg
-    BuildMI(MBB, MBBI, DL, TII->get(Temple::ADD))
-        .addReg(Temple::T0)
+        .addReg(DestReg)
         .setMIFlag(Flag);
   } else {
     report_fatal_error("adjustReg cannot yet handle adjustments >16 bits");

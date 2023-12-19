@@ -11,7 +11,8 @@
 // This file contains the Temple implementation of the TargetInstrInfo class.
 //
 //===----------------------------------------------------------------------===//
-
+// Uses: dependency
+// Defs: write
 //===----------------------------------------------------------------------===//
 // Temple profiles and nodes
 //===----------------------------------------------------------------------===//
@@ -22,9 +23,8 @@ def SDT_TempleSelectCC
                     [SDTCisSameAs<0, 1>, SDTCisSameAs<1, 2>, SDTCisVT<3, i16>]>;
 def SDT_TempleBrCC
     : SDTypeProfile<0, 2, [SDTCisVT<0, OtherVT>, SDTCisVT<1, i16>]>;
-    
-def Templeret : SDNode<"TempleISD::RET", SDTNone,
-                       [SDNPHasChain]>;
+
+def Templeret : SDNode<"TempleISD::RET", SDTNone, [SDNPHasChain]>;
 
 def Templeadd : SDNode<"TempleISD::ADD", SDTIntBinOp, [SDNPOutGlue]>;
 def Templenor : SDNode<"TempleISD::NOR", SDTIntBinOp, [SDNPOutGlue]>;
@@ -78,8 +78,8 @@ def immcond3 : PatLeaf<(imm), [{ return isInt<3>(N->getZExtValue()); }]>;
 
 // Temple Address Mode! SDNode frameindex could possibily be a match
 // since load and store instructions from stack used it.
-def addr
-    : ComplexPattern<iPTR, 2, "SelectAddr", [frameindex], [SDNPWantParent]>;
+// def addr
+//     : ComplexPattern<iPTR, 2, "SelectAddr", [frameindex], [SDNPWantParent]>;
 
 def SDT_TempleCallSeqStart
     : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
@@ -93,17 +93,17 @@ def CallSeqEnd : SDNode<"ISD::CALLSEQ_END", SDT_TempleCallSeqEnd,
 // Pattern fragment for load/store
 //===----------------------------------------------------------------------===//
 
-class AlignedLoad<PatFrag Node> :
-  PatFrag<(ops node:$ptr), (Node node:$ptr), [{
-  LoadSDNode *LD = cast<LoadSDNode>(N);
-  return LD->getMemoryVT().getSizeInBits() / 8 <= LD->getAlignment();
-}]>;
+// class AlignedLoad<PatFrag Node> :
+//   PatFrag<(ops node:$ptr), (Node node:$ptr), [{
+//   LoadSDNode *LD = cast<LoadSDNode>(N);
+//   return LD->getMemoryVT().getSizeInBits() / 8 <= LD->getAlignment();
+// }]>;
 
-class AlignedStore<PatFrag Node> :
-  PatFrag<(ops node:$val, node:$ptr), (Node node:$val, node:$ptr), [{
-  StoreSDNode *SD = cast<StoreSDNode>(N);
-  return SD->getMemoryVT().getSizeInBits() / 8 <= SD->getAlignment();
-}]>;
+// class AlignedStore<PatFrag Node> :
+//   PatFrag<(ops node:$val, node:$ptr), (Node node:$val, node:$ptr), [{
+//   StoreSDNode *SD = cast<StoreSDNode>(N);
+//   return SD->getMemoryVT().getSizeInBits() / 8 <= SD->getAlignment();
+// }]>;
 
 // Load/Store PatFrags.
 // def load_a          : AlignedLoad<load>;
@@ -117,57 +117,75 @@ class AlignedStore<PatFrag Node> :
 // Temple Instructions
 //===----------------------------------------------------------------------===//
 /// Bitwise Instructions
-def NOR : FF<0x00, (outs),
-             (ins GPRIn
-              : $ra),
-             "nor\t$ra", IIAlu, [(set ACC, (Templenor ACC, GPRIn
-                                            : $ra))]>;
-
+let Defs = [ACC, FLAG], Uses = [ACC] in {
+  def NOR : FF<0x00, (outs),
+               (ins GPRIn
+                : $ra),
+               "nor\t$ra", IIAlu, [(set ACC, (Templenor ACC, GPRIn
+                                              : $ra))]>;
+}
 /// Arithmetic Instructions
 // IR "add" defined in include/llvm/Target/TargetSelectionDAG.td, line 315
 // (def add).
-def ADD : FF<0x01, (outs),
-             (ins GPRIn
-              : $ra),
-             "add\t$ra", IIAlu, [(set ACC, (Templeadd ACC, GPRIn
-                                            : $ra))]>;
+let Defs = [ACC, FLAG] in {
+  let Uses = [ACC] in {
+    def ADD : FF<0x01, (outs),
+                 (ins GPRIn
+                  : $ra),
+                 "add\t$ra", IIAlu, [(set ACC, (add ACC, GPRIn
+                                                : $ra))]>;
+  }
+  let mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
+    def ADDI : Pseudo<(outs),
+                      (ins GPRIn
+                       : $ra, simm16
+                       : $imm16),
+                      [(set ACC, (add GPRIn
+                                  : $ra, i16
+                                  : $imm16))]>;
+  }
+}
 /// Load and Store Instructions
 ///  aligned
 let canFoldAsLoad = 1, mayStore = 0, mayLoad = 1 in {
-  def LD : FF<0x02, (outs),
+  let Defs = [ACC] in {
+    def LD : FF<0x02, (outs),
+                (ins GPRIn
+                 : $ra),
+                "ld\t$ra", IILoad, [(set ACC, (load GPRIn
+                                               : $ra))]>;
+  }
+}
+
+let Uses = [ACC] in {
+  let mayStore = 0, mayLoad = 0 in {
+    def MOVE : FF<0x03,
+                  (outs GPROut
+                   : $ra),
+                  (ins), "move\t$ra", IIStore, [(set GPROut
+                                               : $ra, ACC)]>;
+  }
+  def SD : FF<0x4, (outs),
               (ins GPRIn
                : $ra),
-              "ld\t$ra", IILoad, [(set ACC, (load GPRIn
-                                             : $ra))]>;
-///  def LDi : Pseudo<(outs GPROut:$ra),(ins i16imm:$imm),[(set $ra,(load $imm))]>;
+              "sd\t$ra", IIStore, [(store ACC, GPRIn
+                                    : $ra)]>;
 }
 
-
-
-let mayStore = 0, mayLoad = 0 in {
-  def MOVE : FF<0x03,
-                (outs GPROut
-                 : $ra),
-                (ins), "move\t$ra", IIAlu, [(set GPROut
-                                             : $ra, ACC)]>;
-}
-
-def SD : FF<0x4, (outs),
-            (ins GPRIn
-             : $ra),
-            "sd\t$ra", IIStore, [(store ACC, GPRIn
-                                  : $ra)]>;
-
-let mayStore = 0, mayLoad = 0,hasSideEffects = 0 in {
+let mayStore = 0, mayLoad = 0, hasSideEffects = 0, Defs = [ACC] in {
   def SETI : FI<0x05, (outs),
                 (ins simm16
                  : $imm16),
                 "seti\t$imm16", IILoad, [(set ACC, i16
                                           : $imm16)]>;
-  def SETIGPR : Pseudo<(outs GPROut:$ra),(ins simm16:$imm),[(set GPROut:$ra,simm16:$imm)]>;
-
+  def SETIGPR : Pseudo<(outs GPROut
+                        : $ra),
+                       (ins simm16
+                        : $imm),
+                       [(set GPROut
+                         : $ra, i16
+                         : $imm)]>;
 }
-
 
 /// Branch Instructions
 let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
@@ -230,12 +248,12 @@ let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
                                      : $ra, 0, ZERO)>;
 }
 
-let isReturn = 1, isTerminator = 1,
-    isBarrier = 1 in def RET : Pseudo<(outs), (ins), [(Templeret)]>,
-    PseudoInstExpansion<(JL ZERO, 7, RA)>;
-
+let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
+  def RET : Pseudo<(outs), (ins), [(Templeret)]>,
+            PseudoInstExpansion<(JL ZERO, 7, RA)>;
+}
 /// Shift Instructions
-let mayStore = 0, mayLoad = 0 in {
+let mayStore = 0, mayLoad = 0, Uses = [ACC], Defs = [ACC, FLAG] in {
   def SRL : FFnoOP<0x07, (outs), (ins), "srl", IIAlu>;
 }
 
@@ -262,10 +280,6 @@ let Defs = [SP], Uses = [SP] in {
 //===----------------------------------------------------------------------===//
 //  Arbitrary patterns that map to one or more instructions
 //===----------------------------------------------------------------------===//
-
-// Small immediates
-// def : Pat<(i32 immSExt16:$in),
-//          (ADDiu ZERO, imm:$in)>;
 
 def : Pat<(add ACC, 1), (ADD ONE)>;
 def : Pat<(add ACC, -1), (ADD ALLONE)>;

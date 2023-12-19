@@ -32,12 +32,9 @@ void TempleInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   } else if (Temple::AccRegRegClass.contains(SrcReg)) { // Copy from Acc Reg.
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
   } else { // Copy between General Regs.
-    BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(Temple::T0); // stash Acc
     BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
-    BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0); // restore Acc
-    BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(Temple::T0);
   }
 }
 
@@ -53,12 +50,9 @@ void TempleInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   if (!Temple::GPRInRegClass.hasSubClassEq(RC))
     llvm_unreachable("Can't store this register to stack slot");
-  BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(Temple::T0); // stash Acc
   BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
   BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
   BuildMI(MBB, MBBI, DL, get(Temple::SD)).addFrameIndex(FI);
-  BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0); // restore Acc
-  BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(Temple::T0);
 }
 
 void TempleInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
@@ -74,11 +68,8 @@ void TempleInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   if (!Temple::GPROutRegClass.hasSubClassEq(RC))
     llvm_unreachable("Can't load this register from stack slot");
 
-  BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(Temple::T0); // stash Acc
   BuildMI(MBB, MBBI, DL, get(Temple::LD)).addFrameIndex(FI);
   BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
-  BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0); // restore Acc
-  BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(Temple::T0);
 }
 
 void TempleInstrInfo::movImm16(MachineBasicBlock &MBB,
@@ -87,15 +78,8 @@ void TempleInstrInfo::movImm16(MachineBasicBlock &MBB,
                                uint64_t Val, MachineInstr::MIFlag Flag) const {
   assert(isInt<16>(Val) && "Can only materialize 16-bit constants");
 
-  BuildMI(MBB, MBBI, DL, get(Temple::MOVE))
-      .addReg(Temple::T0)
-      .setMIFlag(Flag); // stash Acc
   BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(Val).setMIFlag(Flag);
   BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg).setMIFlag(Flag);
-  BuildMI(MBB, MBBI, DL, get(Temple::SETI))
-      .addImm(0)
-      .setMIFlag(Flag); // restore Acc
-  BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(Temple::T0).setMIFlag(Flag);
 }
 
 // // The contents of values added to Cond are not examined outside of
