@@ -104,6 +104,8 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 
   case ISD::RETURNADDR:
     return LowerRETURNADDR(Op, DAG);
+    case ISD::Constant:
+    return LowerConstant(Op,DAG);
   }
 }
 
@@ -230,7 +232,7 @@ SDValue TempleTargetLowering::LowerFRAMEADDR(SDValue Op,
   SDValue FrameAddr = DAG.getCopyFromReg(DAG.getEntryNode(), DL, FrameReg, VT);
   unsigned Depth = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
   while (Depth--) {
-    int Offset = -4;
+    int Offset = -2;
     SDValue Ptr = DAG.getNode(ISD::ADD, DL, VT, FrameAddr,
                               DAG.getIntPtrConstant(Offset, DL));
     FrameAddr =
@@ -266,6 +268,15 @@ SDValue TempleTargetLowering::LowerRETURNADDR(SDValue Op,
   unsigned Reg = MF.addLiveIn(RI.getRARegister(), &Temple::GPRInRegClass);
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, MVT::i16);
 }
+
+SDValue TempleTargetLowering::LowerConstant(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  SDValue  MN = SDValue(DAG.getMachineNode(Temple::SETI, DL, Ty, Op.getOperand(1)), 0);
+  return MN;
+}
+
 
 static unsigned getBranchOpcodeForIntCondCode(Temple::CondCode CC) {
   switch (CC) {

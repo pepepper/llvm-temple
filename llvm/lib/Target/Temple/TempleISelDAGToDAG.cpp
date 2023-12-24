@@ -50,17 +50,49 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
     Node->setNodeId(-1);
     return;
   }
-  LLVM_DEBUG(dbgs() << "== "; Node->dump(CurDAG); dbgs() << "\n");
 
+  SDLoc DL(Node);
   if (Node->getOpcode() == ISD::FrameIndex) {
-    SDLoc DL(Node);
     SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
     int FI = dyn_cast<FrameIndexSDNode>(Node)->getIndex();
     EVT VT = Node->getValueType(0);
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
     ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, VT, TFI, Imm));
     return;
+  } else if (Node->getOpcode() == ISD::Constant) { // Constant Register Lowering
+    ConstantSDNode *ConstNode = cast<ConstantSDNode>(Node);
+    if (ConstNode->isZero()) {
+      SDValue New = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
+                                           Temple::ZERO, MVT::i16);
+      ReplaceNode(Node, New.getNode());
+      return;
+    } else if (ConstNode->isOne()) {
+      SDValue New = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
+                                           Temple::ONE, MVT::i16);
+      ReplaceNode(Node, New.getNode());
+      return;
+    } else if (ConstNode->isAllOnes()) {
+      SDValue New = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
+                                           Temple::ALLONE, MVT::i16);
+      ReplaceNode(Node, New.getNode());
+      return;
+    }
+    else{
+      SDValue New = CurDAG->getTargetConstant(ConstNode->getSExtValue(),
+                                              SDLoc(Node), MVT::i16);
+      ReplaceNode(Node, New.getNode());
+      return;
+    }
+  } else if (Node->getOpcode() == ISD::ADD) {
+    if (Node->getOperand(1).getOpcode() == ISD::Constant) {
+      ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, MVT::i16,
+                                               Node->getOperand(0),
+                                               Node->getOperand(1)));
+    }
   }
+  // }else if(Node->getOpcode()==ISD::CopyToReg){
+
+  // }
 
   //   if (Node->getOpcode() == ISD::BR) {
   //     SDLoc DL(Node);
