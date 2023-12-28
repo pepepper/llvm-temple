@@ -39,6 +39,8 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
 
   setStackPointerRegisterToSaveRestore(Temple::SP);
 
+  setOperationAction(ISD::ADD, MVT::i16, Custom);
+  setOperationAction(ISD::STORE, MVT::i16, Custom);
   for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
     setLoadExtAction(N, MVT::i16, MVT::i1, Promote);
 
@@ -104,8 +106,10 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 
   case ISD::RETURNADDR:
     return LowerRETURNADDR(Op, DAG);
-    case ISD::Constant:
-    return LowerConstant(Op,DAG);
+  case ISD::ADD:
+    return LowerADD(Op, DAG);
+  case ISD::STORE:
+    return LowerSTORE(Op, DAG);
   }
 }
 
@@ -269,14 +273,30 @@ SDValue TempleTargetLowering::LowerRETURNADDR(SDValue Op,
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, MVT::i16);
 }
 
-SDValue TempleTargetLowering::LowerConstant(SDValue Op,
-                                             SelectionDAG &DAG) const {
+SDValue TempleTargetLowering::LowerADD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   EVT Ty = Op.getValueType();
-  SDValue  MN = SDValue(DAG.getMachineNode(Temple::SETI, DL, Ty, Op.getOperand(1)), 0);
-  return MN;
+  if (Op.getOperand(1).getOpcode() == ISD::Constant) {
+    // if (dyn_cast<RegisterSDNode>(Op.getOperand(0))->getReg() == Temple::ACC)
+    // {
+    return SDValue(DAG.getMachineNode(Temple::ADDI, DL, Ty, Op.getOperand(1)),
+                   0);
+    // } else {
+    //   return SDValue(DAG.getMachineNode(Temple::ADDIr, DL, Ty,
+    //   Op.getOperand(0),
+    //                                     Op.getOperand(1)),
+    //                  0);
+    // }
+  }
 }
 
+SDValue TempleTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  return SDValue(DAG.getMachineNode(Temple::STORE, DL, Ty, Op.getOperand(1),
+                                    Op.getOperand(2)),
+                 0);
+}
 
 static unsigned getBranchOpcodeForIntCondCode(Temple::CondCode CC) {
   switch (CC) {

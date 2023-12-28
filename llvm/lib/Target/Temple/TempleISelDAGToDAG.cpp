@@ -52,14 +52,16 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
   }
 
   SDLoc DL(Node);
-  if (Node->getOpcode() == ISD::FrameIndex) {
+  switch (Node->getOpcode()) {
+  case ISD::FrameIndex: {
     SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
     int FI = dyn_cast<FrameIndexSDNode>(Node)->getIndex();
     EVT VT = Node->getValueType(0);
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
-    ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, VT, TFI, Imm));
+    ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDIr, DL, VT, TFI, Imm));
     return;
-  } else if (Node->getOpcode() == ISD::Constant) { // Constant Register Lowering
+  }
+  case ISD::Constant: {
     ConstantSDNode *ConstNode = cast<ConstantSDNode>(Node);
     if (ConstNode->isZero()) {
       SDValue New = CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
@@ -76,24 +78,29 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
                                            Temple::ALLONE, MVT::i16);
       ReplaceNode(Node, New.getNode());
       return;
-    }
-    else{
+    } else {
       SDValue New = CurDAG->getTargetConstant(ConstNode->getSExtValue(),
                                               SDLoc(Node), MVT::i16);
       ReplaceNode(Node, New.getNode());
       return;
     }
-  } else if (Node->getOpcode() == ISD::ADD) {
-    if (Node->getOperand(1).getOpcode() == ISD::Constant) {
-      ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDI, DL, MVT::i16,
-                                               Node->getOperand(0),
-                                               Node->getOperand(1)));
-    }
   }
-  // }else if(Node->getOpcode()==ISD::CopyToReg){
+  case TempleISD::RET: {
+    ReplaceNode(Node,
+                CurDAG->getMachineNode(Temple::RET, DL, Node->getValueType(0),
+                                       Node->getOperand(0)));
+    return;
+  }
 
-  // }
+    // case ISD::CopyToReg:
+    //   if (Node->getOperand(1)==Temple::ACC){
 
+    //   }
+  default:
+    // Select the default instruction.
+    SelectCode(Node);
+    break;
+  }
   //   if (Node->getOpcode() == ISD::BR) {
   //     SDLoc DL(Node);
   //     SDValue Imm = CurDAG->getTargetConstant(0, DL, MVT::i16);
@@ -105,10 +112,6 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
   //     ReplaceNode(Node, CurDAG->getMachineNode(Temple::JLAlways, DL, VT,
   //     Imm)); return;
   //   }
-
-  // Select the default instruction.
-
-  SelectCode(Node);
 }
 
 bool TempleDAGToDAGISel::SelectInlineAsmMemoryOperand(

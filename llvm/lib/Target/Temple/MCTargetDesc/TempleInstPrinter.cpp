@@ -11,6 +11,7 @@
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/Debug.h"
 using namespace llvm;
 
 #define DEBUG_TYPE "asm-printer"
@@ -21,6 +22,7 @@ using namespace llvm;
 void TempleInstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                   StringRef Annot, const MCSubtargetInfo &STI,
                                   raw_ostream &OS) {
+  LLVM_DEBUG(dbgs() << "TempleInstPrinter:" << *MI << "\n");
   printInstruction(MI, Address, STI, OS);
   printAnnotation(OS, Annot);
 }

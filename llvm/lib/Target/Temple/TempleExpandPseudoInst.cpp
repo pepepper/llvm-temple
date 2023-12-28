@@ -54,21 +54,55 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return false;
   case Temple::SETIGPR: {
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI)).addImm(MI.getOperand(1).getImm());
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .addImm(MI.getOperand(1).getImm());
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::MOVE)).addReg(MI.getOperand(0).getReg());
-
-    MI.eraseFromParent();
-    return true;
-  case Temple::ADDI: {
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI)).addImm(MI.getOperand(1).getImm());
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::ADD)).addReg(MI.getOperand(0).getReg());
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::MOVE))
+        .addReg(MI.getOperand(0).getReg());
 
     MI.eraseFromParent();
     return true;
   }
+  case Temple::ADDI: {
+    MachineFunction &MF = *MI.getParent()->getParent();
+    MachineRegisterInfo &MRI = MF.getRegInfo();
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::MOVE)).addReg(Temple::T0); // stash ACC
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .addImm(MI.getOperand(0).getImm());
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::ADD))
+        .addReg(Temple::T0);
+
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::ADDIr: {
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .addImm(MI.getOperand(1).getImm());
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::ADD))
+        .addReg(MI.getOperand(0).getReg());
+
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::STORE: {
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .addImm(0);
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::ADD))
+        .addReg(MI.getOperand(0).getReg());
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SD))
+        .addReg(MI.getOperand(1).getReg());
+
+    MI.eraseFromParent();
+    return true;
   }
   }
 }

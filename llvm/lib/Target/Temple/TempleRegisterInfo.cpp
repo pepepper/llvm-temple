@@ -53,10 +53,15 @@ bool TempleRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
   Register FrameReg;
+
+  MI.print(dbgs());
+
   int Offset = getFrameLowering(MF)
                    ->getFrameIndexReference(MF, FrameIndex, FrameReg)
                    .getFixed() +
-               MI.getOperand(FIOperandNum + 1).getImm();
+               (MI.getOperand(FIOperandNum + 1).isImm()
+                    ? MI.getOperand(FIOperandNum + 1).getImm()
+                    : 0);
 
   if (!isInt<16>(Offset))
     report_fatal_error(
@@ -64,12 +69,13 @@ bool TempleRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MachineBasicBlock &MBB = *MI.getParent();
 
-    unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPROutRegClass);
-    BuildMI(MBB, II, DL, TII->get(Temple::SETI)).addImm(Offset);
-    BuildMI(MBB, II, DL, TII->get(Temple::ADD)).addReg(FrameReg);
-    BuildMI(MBB, II, DL, TII->get(Temple::MOVE)).addReg(ScratchReg,RegState::Define);
-    Offset = 0;
-    FrameReg = ScratchReg;
+  unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPROutRegClass);
+  BuildMI(MBB, II, DL, TII->get(Temple::SETI)).addImm(Offset);
+  BuildMI(MBB, II, DL, TII->get(Temple::ADD)).addReg(FrameReg);
+  BuildMI(MBB, II, DL, TII->get(Temple::MOVE))
+      .addReg(ScratchReg, RegState::Define);
+  Offset = 0;
+  FrameReg = ScratchReg;
 
   MI.getOperand(FIOperandNum).ChangeToRegister(FrameReg, false);
   return false;

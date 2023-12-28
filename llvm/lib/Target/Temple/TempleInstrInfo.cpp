@@ -26,12 +26,15 @@ void TempleInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator MBBI,
                                   const DebugLoc &DL, MCRegister DstReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  if (Temple::AccRegRegClass.contains(DstReg)) { // Copy to Acc Reg.
+  if (DstReg == Temple::ACC && SrcReg != Temple::ACC) { // Copy to Acc Reg.
     BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
-  } else if (Temple::AccRegRegClass.contains(SrcReg)) { // Copy from Acc Reg.
+  } else if (SrcReg == Temple::ACC &&
+             DstReg != Temple::ACC) { // Copy from Acc Reg.
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
-  } else { // Copy between General Regs.
+  } else if (Temple::GPRInRegClass.contains(SrcReg) &&
+             Temple::GPRInRegClass.contains(
+                 DstReg)) { // Copy between General Regs.
     BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);

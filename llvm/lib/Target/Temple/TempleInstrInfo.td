@@ -136,13 +136,20 @@ let Defs = [ACC, FLAG] in {
                                                 : $ra))]>;
   }
   let mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
-    def ADDI : Pseudo<(outs),
-                      (ins GPRIn
-                       : $ra, simm16
-                       : $imm16),
-                      [(set ACC, (add GPRIn
-                                  : $ra, i16
-                                  : $imm16))]>;
+    def ADDIr : Pseudo<(outs), // ADD GPR+Imm, set to ACC
+                       (ins GPRIn
+                        : $ra, simm16
+                        : $imm16),
+                       [(set ACC, (add GPRIn
+                                   : $ra, i16
+                                   : $imm16))]>;
+    let Uses = [ACC] in {
+      def ADDI : Pseudo<(outs), // ADD ACC+Imm, set to ACC
+                        (ins simm16
+                         : $imm16),
+                        [(set ACC, (add ACC, i16
+                                    : $imm16))]>;
+    }
   }
 }
 /// Load and Store Instructions
@@ -152,7 +159,7 @@ let canFoldAsLoad = 1, mayStore = 0, mayLoad = 1 in {
     def LD : FF<0x02, (outs),
                 (ins GPRIn
                  : $ra),
-                "ld\t$ra", IILoad, [(set ACC, (load GPRIn
+                "ld\t$ra", IILoad, [(set ACC,(load GPRIn
                                                : $ra))]>;
   }
 }
@@ -163,13 +170,22 @@ let Uses = [ACC] in {
                   (outs GPROut
                    : $ra),
                   (ins), "move\t$ra", IIStore, [(set GPROut
-                                               : $ra, ACC)]>;
+                                                 : $ra, ACC)]>;
   }
   def SD : FF<0x4, (outs),
               (ins GPRIn
                : $ra),
               "sd\t$ra", IIStore, [(store ACC, GPRIn
                                     : $ra)]>;
+                                    let Defs = [ACC] in {
+  def STORE : Pseudo<(outs), // immdiate store, op1:val op2:ptr
+                      (ins GPRIn
+                       : $ra, GPRIn
+                       : $rb),
+                      [(store GPRIn
+                        : $ra, GPRIn
+                        : $rb)]>;
+                                    }
 }
 
 let mayStore = 0, mayLoad = 0, hasSideEffects = 0, Defs = [ACC] in {
