@@ -198,7 +198,7 @@ void TempleFrameLowering::processFunctionBeforeFrameFinalized(
     MachineFunction &MF, RegScavenger *RS) const {
   const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  const TargetRegisterClass *RC = &Temple::GPROutRegClass;
+  const TargetRegisterClass *RC = &Temple::GPRRegClass;
   if (!isInt<9>(MFI.estimateStackSize(MF))) {
     int RegScavFI = MFI.CreateStackObject(RegInfo->getSpillSize(*RC),
                                           RegInfo->getSpillAlign(*RC), false);

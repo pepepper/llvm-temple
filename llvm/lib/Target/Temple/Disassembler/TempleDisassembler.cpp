@@ -53,17 +53,8 @@ static const unsigned GPRDecoderTable[] = {
     Temple::RA,    Temple::SPC, Temple::IA,  Temple::ZERO, Temple::ONE,
     Temple::ALLONE};
 
-static DecodeStatus DecodeGPRInRegisterClass(MCInst &Inst, uint64_t RegNo,
-                                             uint64_t Address,
-                                             const void *Decoder) {
-  if (RegNo > sizeof(GPRDecoderTable))
-    return MCDisassembler::Fail;
 
-  unsigned Reg = GPRDecoderTable[RegNo];
-  Inst.addOperand(MCOperand::createReg(Reg));
-  return MCDisassembler::Success;
-}
-static DecodeStatus DecodeGPROutRegisterClass(MCInst &Inst, uint64_t RegNo,
+static DecodeStatus DecodeGPRRegisterClass(MCInst &Inst, uint64_t RegNo,
                                               uint64_t Address,
                                               const void *Decoder) {
   if (RegNo > sizeof(GPRDecoderTable))

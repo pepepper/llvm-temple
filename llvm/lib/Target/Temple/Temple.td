@@ -6,7 +6,7 @@ include "llvm/Target/Target.td"
 include "TempleSchedule.td"
 include "TempleRegisterInfo.td"
 include "TempleCallingConv.td"
-include "TempleInstrInfo.td"
+include "TemplePseudoInstr.td"
 
 //===----------------------------------------------------------------------===//
 // Temple processors supported.

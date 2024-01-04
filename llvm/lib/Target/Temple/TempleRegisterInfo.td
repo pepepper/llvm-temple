@@ -93,10 +93,8 @@ def SR : TempleRegisterClass<"Temple", [i16], 16, (add FLAG)>;
 def PCRegs : RegisterClass<"Temple", [i16], 16, (add PC, SPC)>;
 
 def AccReg : RegisterClass<"Temple", [i16], 16, (add ACC)>;
-def GPROut : TempleRegisterClass<"Temple", [i16], 16,
-                                 (add(sequence "R%u", 0, 19), SP, RA)>;
-def GPRIn : TempleRegisterClass<"Temple", [i16], 16,
-                                (add(sequence "R%u", 0, 19), SP, RA, ZERO, ONE,
-                                 ALLONE)>;
+def GPR : TempleRegisterClass<"Temple", [i16], 16,
+                              (add(sequence "R%u", 0, 19), SP, RA, ZERO, ONE,
+                               ALLONE)>;
 def PseudoOut
     : TempleRegisterClass<"Temple", [i16], 16, (add(sequence "T%u", 0, 2))>;

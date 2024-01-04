@@ -69,7 +69,7 @@ bool TempleRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   MachineBasicBlock &MBB = *MI.getParent();
 
-  unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPROutRegClass);
+  unsigned ScratchReg = MRI.createVirtualRegister(&Temple::GPRRegClass);
   BuildMI(MBB, II, DL, TII->get(Temple::SETI)).addImm(Offset);
   BuildMI(MBB, II, DL, TII->get(Temple::ADD)).addReg(FrameReg);
   BuildMI(MBB, II, DL, TII->get(Temple::MOVE))

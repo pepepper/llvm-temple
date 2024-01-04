@@ -26,8 +26,8 @@ def SDT_TempleBrCC
 
 def Templeret : SDNode<"TempleISD::RET", SDTNone, [SDNPHasChain]>;
 
-def Templeadd : SDNode<"TempleISD::ADD", SDTIntBinOp, [SDNPOutGlue]>;
-def Templenor : SDNode<"TempleISD::NOR", SDTIntBinOp, [SDNPOutGlue]>;
+// def Templeadd : SDNode<"TempleISD::ADD", SDTIntBinOp, [SDNPOutGlue]>;
+// def Templenor : SDNode<"TempleISD::NOR", SDTIntBinOp, [SDNPOutGlue]>;
 
 def Templeselectcc
     : SDNode<"TempleISD::SELECT_CC", SDT_TempleSelectCC, [SDNPInGlue]>;
@@ -118,185 +118,62 @@ def CallSeqEnd : SDNode<"ISD::CALLSEQ_END", SDT_TempleCallSeqEnd,
 //===----------------------------------------------------------------------===//
 /// Bitwise Instructions
 let Defs = [ACC, FLAG], Uses = [ACC] in {
-  def NOR : FF<0x00, (outs),
-               (ins GPRIn
-                : $ra),
-               "nor\t$ra", IIAlu, [(set ACC, (Templenor ACC, GPRIn
-                                              : $ra))]>;
+  def NOR : FF<0x00, (outs), (ins GPR : $ra), "nor\t$ra", IIAlu, []>;
 }
 /// Arithmetic Instructions
 // IR "add" defined in include/llvm/Target/TargetSelectionDAG.td, line 315
 // (def add).
 let Defs = [ACC, FLAG] in {
   let Uses = [ACC] in {
-    def ADD : FF<0x01, (outs),
-                 (ins GPRIn
-                  : $ra),
-                 "add\t$ra", IIAlu, [(set ACC, (add ACC, GPRIn
-                                                : $ra))]>;
-  }
-  let mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
-    def ADDIr : Pseudo<(outs), // ADD GPR+Imm, set to ACC
-                       (ins GPRIn
-                        : $ra, simm16
-                        : $imm16),
-                       [(set ACC, (add GPRIn
-                                   : $ra, i16
-                                   : $imm16))]>;
-    let Uses = [ACC] in {
-      def ADDI : Pseudo<(outs), // ADD ACC+Imm, set to ACC
-                        (ins simm16
-                         : $imm16),
-                        [(set ACC, (add ACC, i16
-                                    : $imm16))]>;
-    }
+    def ADD : FF<0x01, (outs), (ins GPR : $ra), "add\t$ra", IIAlu, []>;
   }
 }
 /// Load and Store Instructions
 ///  aligned
 let canFoldAsLoad = 1, mayStore = 0, mayLoad = 1 in {
   let Defs = [ACC] in {
-    def LD : FF<0x02, (outs),
-                (ins GPRIn
-                 : $ra),
-                "ld\t$ra", IILoad, [(set ACC,(load GPRIn
-                                               : $ra))]>;
+    def LD : FF<0x02, (outs), (ins GPR : $ra), "ld\t$ra", IILoad, []>;
   }
 }
 
 let Uses = [ACC] in {
   let mayStore = 0, mayLoad = 0 in {
-    def MOVE : FF<0x03,
-                  (outs GPROut
-                   : $ra),
-                  (ins), "move\t$ra", IIStore, [(set GPROut
-                                                 : $ra, ACC)]>;
+    def MOVE : FF<0x03, (outs GPR : $ra), (ins), "move\t$ra", IIStore, []>;
   }
-  def SD : FF<0x4, (outs),
-              (ins GPRIn
-               : $ra),
-              "sd\t$ra", IIStore, [(store ACC, GPRIn
-                                    : $ra)]>;
-                                    let Defs = [ACC] in {
-  def STORE : Pseudo<(outs), // immdiate store, op1:val op2:ptr
-                      (ins GPRIn
-                       : $ra, GPRIn
-                       : $rb),
-                      [(store GPRIn
-                        : $ra, GPRIn
-                        : $rb)]>;
-                                    }
+  let mayStore = 1, mayLoad = 0 in {
+    def SD : FF<0x4, (outs), (ins GPR : $ra), "sd\t$ra", IIStore, []>;
+  }
 }
 
 let mayStore = 0, mayLoad = 0, hasSideEffects = 0, Defs = [ACC] in {
   def SETI : FI<0x05, (outs),
                 (ins simm16
                  : $imm16),
-                "seti\t$imm16", IILoad, [(set ACC, i16
-                                          : $imm16)]>;
-  def SETIGPR : Pseudo<(outs GPROut
-                        : $ra),
-                       (ins simm16
-                        : $imm),
-                       [(set GPROut
-                         : $ra, i16
-                         : $imm)]>;
+                "seti\t$imm16", IILoad, []>;
 }
 
 /// Branch Instructions
 let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   let Uses = [FLAG] in {
     def JL : FJ<0x6,
-                (outs GPRIn
+                (outs GPR
                  : $ra),
                 (ins cond3
-                 : $cond, GPRIn
+                 : $cond, GPR
                  : $rb),
                 "jl\t$ra, $cond, $rb", IIBranch>;
-    def JLI : Pseudo<(outs), (ins cond3
-                              : $cond, GPRIn
-                              : $rb)>,
-              PseudoInstExpansion<(JL ALLONE, cond3
-                                   : $cond, GPRIn
-                                   : $rb)>;
-    def JLZero : Pseudo<(outs GPRIn
-                         : $ra),
-                        (ins GPRIn
-                         : $rb)>,
-                 PseudoInstExpansion<(JL GPRIn
-                                      : $ra, 4, GPRIn
-                                      : $rb)>;
-    def JLNeg : Pseudo<(outs GPRIn
-                        : $ra),
-                       (ins GPRIn
-                        : $rb)>,
-                PseudoInstExpansion<(JL GPRIn
-                                     : $ra, 2, GPRIn
-                                     : $rb)>;
-    def JLCarry : Pseudo<(outs GPRIn
-                          : $ra),
-                         (ins GPRIn
-                          : $rb)>,
-                  PseudoInstExpansion<(JL GPRIn
-                                       : $ra, 1, GPRIn
-                                       : $rb)>;
   }
-  let isBarrier = 1, isTerminator = 1 in {
-    def JLAlways : Pseudo<(outs GPRIn
-                           : $ra),
-                          (ins GPRIn
-                           : $rb)>,
-                   PseudoInstExpansion<(JL GPRIn
-                                        : $ra, 7, GPRIn
-                                        : $rb)>;
-    def branch : Pseudo<(outs),
-                        (ins GPRIn
-                         : $ra),
-                        [(brind GPRIn
-                          : $ra)]>,
-                 PseudoInstExpansion<(JL ZERO, 7, GPRIn
-                                      : $ra)>;
-  }
-  def JLNever : Pseudo<(outs GPRIn
-                        : $ra),
-                       (ins)>,
-                PseudoInstExpansion<(JL GPRIn
-                                     : $ra, 0, ZERO)>;
 }
 
-let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
-  def RET : Pseudo<(outs), (ins), [(Templeret)]>,
-            PseudoInstExpansion<(JL ZERO, 7, RA)>;
-}
 /// Shift Instructions
 let mayStore = 0, mayLoad = 0, Uses = [ACC], Defs = [ACC, FLAG] in {
   def SRL : FFnoOP<0x07, (outs), (ins), "srl", IIAlu>;
 }
 
-def : Pat<(srl ACC, 1), (SRL)>;
-
-// Pessimistically assume the stack pointer will be clobbered
-let Defs = [SP], Uses = [SP] in {
-  def ADJCALLSTACKDOWN : Pseudo<(outs),
-                                (ins i16imm
-                                 : $amt1, i16imm
-                                 : $amt2),
-                                [(CallSeqStart timm
-                                  : $amt1, timm
-                                  : $amt2)]>;
-  def ADJCALLSTACKUP : Pseudo<(outs),
-                              (ins i16imm
-                               : $amt1, i16imm
-                               : $amt2),
-                              [(CallSeqEnd timm
-                                : $amt1, timm
-                                : $amt2)]>;
-} // Defs = [SP], Uses = [SP]
-
 //===----------------------------------------------------------------------===//
 //  Arbitrary patterns that map to one or more instructions
 //===----------------------------------------------------------------------===//
-
+def : Pat<(srl ACC, 1), (SRL)>;
 def : Pat<(add ACC, 1), (ADD ONE)>;
 def : Pat<(add ACC, -1), (ADD ALLONE)>;
 def : Pat<(not ACC), (NOR ZERO)>;

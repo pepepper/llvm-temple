@@ -32,19 +32,20 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
     : TargetLowering(TM), Subtarget(STI) {
 
   // Set up the register classes.
-  addRegisterClass(MVT::i16, &Temple::GPRInRegClass);
+  addRegisterClass(MVT::i16, &Temple::GPRRegClass);
 
   // Compute derived properties from the register classes.
   computeRegisterProperties(STI.getRegisterInfo());
 
   setStackPointerRegisterToSaveRestore(Temple::SP);
 
-  setOperationAction(ISD::ADD, MVT::i16, Custom);
-  setOperationAction(ISD::STORE, MVT::i16, Custom);
+  setOperationAction(ISD::SRA, MVT::i16, Expand);
+  setOperationAction(ISD::SHL, MVT::i16, Expand);
+
   for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
     setLoadExtAction(N, MVT::i16, MVT::i1, Promote);
 
-  setOperationAction(ISD::SUBC, MVT::i16, Expand);
+  //   setOperationAction(ISD::SUBC, MVT::i16, Expand);
   // TODO: add all necessary setOperationAction calls.
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
@@ -106,10 +107,6 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 
   case ISD::RETURNADDR:
     return LowerRETURNADDR(Op, DAG);
-  case ISD::ADD:
-    return LowerADD(Op, DAG);
-  case ISD::STORE:
-    return LowerSTORE(Op, DAG);
   }
 }
 
@@ -119,7 +116,7 @@ SDValue TempleTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   SDValue Dest = Op.getOperand(1);
   MachineFunction &MF = DAG.getMachineFunction();
-  Register Reg = MF.getRegInfo().createVirtualRegister(&Temple::GPRInRegClass);
+  Register Reg = MF.getRegInfo().createVirtualRegister(&Temple::GPRRegClass);
   Chain = DAG.getCopyToReg(Chain, dl, Reg, Dest);
   return DAG.getNode(ISD::BRIND, dl, VT, Chain, DAG.getRegister(Reg, MVT::i16));
 }
@@ -269,33 +266,8 @@ SDValue TempleTargetLowering::LowerRETURNADDR(SDValue Op,
 
   // Return the value of the return address register, marking it an implicit
   // live-in.
-  unsigned Reg = MF.addLiveIn(RI.getRARegister(), &Temple::GPRInRegClass);
+  unsigned Reg = MF.addLiveIn(RI.getRARegister(), &Temple::GPRRegClass);
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, MVT::i16);
-}
-
-SDValue TempleTargetLowering::LowerADD(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  if (Op.getOperand(1).getOpcode() == ISD::Constant) {
-    // if (dyn_cast<RegisterSDNode>(Op.getOperand(0))->getReg() == Temple::ACC)
-    // {
-    return SDValue(DAG.getMachineNode(Temple::ADDI, DL, Ty, Op.getOperand(1)),
-                   0);
-    // } else {
-    //   return SDValue(DAG.getMachineNode(Temple::ADDIr, DL, Ty,
-    //   Op.getOperand(0),
-    //                                     Op.getOperand(1)),
-    //                  0);
-    // }
-  }
-}
-
-SDValue TempleTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  return SDValue(DAG.getMachineNode(Temple::STORE, DL, Ty, Op.getOperand(1),
-                                    Op.getOperand(2)),
-                 0);
 }
 
 static unsigned getBranchOpcodeForIntCondCode(Temple::CondCode CC) {
@@ -412,8 +384,7 @@ SDValue TempleTargetLowering::LowerFormalArguments(
                           << RegVT.getEVTString() << "\n");
         report_fatal_error("unhandled argument type");
       }
-      const unsigned VReg =
-          RegInfo.createVirtualRegister(&Temple::GPRInRegClass);
+      const unsigned VReg = RegInfo.createVirtualRegister(&Temple::GPRRegClass);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       ArgVal = DAG.getCopyFromReg(Chain, DL, VReg, RegVT);
     } else {
@@ -672,7 +643,7 @@ TempleTargetLowering::getRegForInlineAsmConstraint(
   if (Constraint.size() == 1) {
     switch (Constraint[0]) {
     case 'r':
-      return std::make_pair(0U, &Temple::GPRInRegClass);
+      return std::make_pair(0U, &Temple::GPRRegClass);
     default:
       break;
     }

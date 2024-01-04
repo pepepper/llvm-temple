@@ -32,8 +32,8 @@ void TempleInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   } else if (SrcReg == Temple::ACC &&
              DstReg != Temple::ACC) { // Copy from Acc Reg.
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
-  } else if (Temple::GPRInRegClass.contains(SrcReg) &&
-             Temple::GPRInRegClass.contains(
+  } else if (Temple::GPRRegClass.contains(SrcReg) &&
+             Temple::GPRRegClass.contains(
                  DstReg)) { // Copy between General Regs.
     BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
@@ -51,7 +51,7 @@ void TempleInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (MBBI != MBB.end())
     DL = MBBI->getDebugLoc();
 
-  if (!Temple::GPRInRegClass.hasSubClassEq(RC))
+  if (!Temple::GPRRegClass.hasSubClassEq(RC))
     llvm_unreachable("Can't store this register to stack slot");
   BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
   BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
@@ -68,7 +68,7 @@ void TempleInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   if (MBBI != MBB.end())
     DL = MBBI->getDebugLoc();
 
-  if (!Temple::GPROutRegClass.hasSubClassEq(RC))
+  if (!Temple::GPRRegClass.hasSubClassEq(RC))
     llvm_unreachable("Can't load this register from stack slot");
 
   BuildMI(MBB, MBBI, DL, get(Temple::LD)).addFrameIndex(FI);
