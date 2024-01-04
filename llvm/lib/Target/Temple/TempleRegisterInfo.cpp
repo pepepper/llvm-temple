@@ -32,6 +32,9 @@ BitVector TempleRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
 
   // Use markSuperRegs to ensure any register aliases are also reserved
+  markSuperRegs(Reserved, Temple::ZERO);
+  markSuperRegs(Reserved, Temple::ONE);
+  markSuperRegs(Reserved, Temple::ALLONE);
   markSuperRegs(Reserved, Temple::RA); // ra
   markSuperRegs(Reserved, Temple::SP); // sp
   //   markSuperRegs(Reserved, Temple::R19); // fp

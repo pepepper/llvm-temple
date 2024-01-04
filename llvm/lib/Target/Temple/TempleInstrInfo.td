@@ -60,18 +60,17 @@ class UImmAsmOperand<int width, string suffix = "">
     : ImmAsmOperand<"U", width, suffix> {
 }
 // Signed Operand
-def simm16 : Operand<i32> {
+def simm16 : Operand<i16> {
   let ParserMatchClass = SImmAsmOperand<16>;
   let DecoderMethod = "decodeSimm16";
 }
 
-def cond3 : Operand<i32> {
+def cond3 : Operand<i8> {
   let ParserMatchClass = UImmAsmOperand<3>;
   let DecoderMethod = "decodeCond";
 }
 
 // Node immediate fits as 16-bit sign extended on target immediate.
-// e.g. addi, andi
 def immSExt16 : PatLeaf<(imm), [{ return isInt<16>(N->getSExtValue()); }]>;
 
 def immcond3 : PatLeaf<(imm), [{ return isInt<3>(N->getZExtValue()); }]>;

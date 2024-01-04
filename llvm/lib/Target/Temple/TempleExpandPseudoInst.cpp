@@ -205,26 +205,16 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::STORE: {
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
-        .addImm(0);
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::ADD))
-        .addReg(MI.getOperand(1).getReg());
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SD))
-        .addReg(MI.getOperand(0).getReg());
+    ImmBuilder(SETI,0);
+    RegBuilder(ADD,GetOperandReg(0));
+    RegBuilder(SD,GetOperandReg(1));
 
     MI.eraseFromParent();
     return true;
   } // STORE
   case Temple::LOAD: {
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::LD))
-        .addReg(MI.getOperand(0).getReg());
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::MOVE))
-        .addReg(MI.getOperand(1).getReg());
+    RegBuilder(LD,GetOperandReg(1));
+    RegBuilder(MOVE,GetOperandReg(0));
     MI.eraseFromParent();
     return true;
   } // LOAD

@@ -14,11 +14,11 @@ multiclass ALUI<SDNode ops> {
   def i : Pseudo<(outs GPR
                   : $ra), // $ra = $rb ops imm16
                  (ins GPR
-                  : $rb, simm16
+                  : $rb, i16imm
                   : $imm16),
                  [(set GPR
                    : $ra, (ops GPR
-                           : $rb, i16
+                           : $rb, imm
                            : $imm16))]>;
 }
 
@@ -33,11 +33,11 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   def SRLi : Pseudo<(outs GPR
                      : $ra), // $ra = $rb >> $rc
                     (ins GPR
-                     : $rb, simm16
+                     : $rb, i16imm
                      : $imm16),
                     [(set GPR
                       : $ra, (srl GPR
-                              : $rb, i16
+                              : $rb, imm
                               : $imm16))]>;
 
   defm AND : ALUI<and>;
@@ -45,13 +45,13 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   defm XOR : ALUI<xor>;
 }
 
-def STORE : Pseudo<(outs), // *($ra) = $rb
+def STORE : Pseudo<(outs), // *($rb) = $ra
                    (ins GPR
                     : $ra, GPR
                     : $rb),
                    [(store GPR
-                     : $rb, GPR
-                     : $ra)]>;
+                     : $ra, GPR
+                     : $rb)]>;
 def LOAD : Pseudo<(outs GPR
                    : $rb), // $rb = *($ra)
                   (ins GPR

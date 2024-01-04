@@ -17,17 +17,20 @@ let Namespace = "Temple" in {
   class TempleReg<bits<5> Enc, string n> : Register<n> {
     // For tablegen(... -gen-emitter)  in CMakeLists.txt
     let HWEncoding{4 - 0} = Enc;
-  } class TempleConstReg<bits<5> Enc, string n> : Register<n> {
+  } 
+  
+  class TempleConstReg<bits<5> Enc, string n> : Register<n> {
     // For tablegen(... -gen-emitter)  in CMakeLists.txt
     let HWEncoding{4 - 0} = Enc;
     let isConstant = true;
-  } class TempleAuxReg<bits<5> Enc, string n> : Register<n> {
+  } 
+  
+  class TempleAuxReg<bits<5> Enc, string n> : Register<n> {
     // For tablegen(... -gen-emitter)  in CMakeLists.txt
     let HWEncoding{4 - 0} = Enc;
   }
   //@ General Purpose Registers
-  def R0 : TempleReg<0, "r0">,
-           DwarfRegNum<[0]>;
+  def R0 : TempleReg<0, "r0">, DwarfRegNum<[0]>;
   def R1 : TempleReg<1, "r1">, DwarfRegNum<[1]>;
   def R2 : TempleReg<2, "r2">, DwarfRegNum<[2]>;
   def R3 : TempleReg<3, "r3">, DwarfRegNum<[3]>;
