@@ -83,7 +83,36 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  }                                  // ADDr
+  } // ADDr
+
+  case Temple::SUBi: {
+    ImmBuilder(SETI, GetOperandImm(2)); // ACC = imm16
+
+    RegBuilder(NOR, Temple::ZERO);
+    RegBuilder(ADD, Temple::ONE); // ACC = neg(ACC)
+
+    RegBuilder(ADD, GetOperandReg(1)); // ACC = ACC + $rb
+
+    RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
+
+    MI.eraseFromParent();
+    return true;
+  } // SUBi
+  case Temple::SUBr: {
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(ADD, GetOperandReg(2)); // ACC = ACC + $rc
+    RegBuilder(NOR, Temple::ZERO);
+    RegBuilder(ADD, Temple::ONE); // ACC = neg(ACC)
+
+    RegBuilder(ADD, GetOperandReg(1)); // ACC = ACC + $rb
+
+    RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
+
+    MI.eraseFromParent();
+    return true;
+  } // SUBr
+
   case Temple::SRLi: {               //$ra = SRL * imm16
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
 
@@ -98,7 +127,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  }
+  } // SRLi
+
   case Temple::ANDi: {               //$ra = ($rb NOR 0) NOR (imm16 NOR 0)
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
 
@@ -130,7 +160,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  }                   // ANDr
+  } // ANDr
+
   case Temple::ORi: { //$ra = (imm16 NOR $rb) NOR 0
     ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(NOR, GetOperandReg(1));
@@ -152,7 +183,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  }                    // ORr
+  } // ORr
+
   case Temple::XORi: { // $ra = (($rb NOR $rb) NOR (imm16 NOR imm16)) NOR
                        //($rb NOR imm16)
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -203,21 +235,203 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  }
+  } // XORr
+
   case Temple::STORE: {
-    ImmBuilder(SETI,0);
-    RegBuilder(ADD,GetOperandReg(0));
-    RegBuilder(SD,GetOperandReg(1));
+    ImmBuilder(SETI, 0);
+    RegBuilder(ADD, GetOperandReg(0));
+    RegBuilder(SD, GetOperandReg(1));
 
     MI.eraseFromParent();
     return true;
   } // STORE
   case Temple::LOAD: {
-    RegBuilder(LD,GetOperandReg(1));
-    RegBuilder(MOVE,GetOperandReg(0));
+    RegBuilder(LD, GetOperandReg(1));
+    RegBuilder(MOVE, GetOperandReg(0));
     MI.eraseFromParent();
     return true;
   } // LOAD
+
+  case Temple::BEQ: {
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(4)
+        .addReg(GetOperandReg(2)); // branch Z__ $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BEQ
+  case Temple::BNE: {
+    ImmBuilder(SETI, 11); // need verification
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::T0)
+        .addImm(0)
+        .addReg(Temple::ZERO); // load program counter
+    RegBuilder(ADD, Temple::T0);
+    RegBuilder(MOVE, Temple::T0);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x4)
+        .addReg(Temple::T0); // branch Z__ fallthrough
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x7)
+        .addReg(GetOperandReg(2)); // branch always $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BNE
+  case Temple::BLT: {
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(2)
+        .addReg(GetOperandReg(2)); // branch _N_ $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BLT
+  case Temple::BGE: {
+    ImmBuilder(SETI, 11); // need verification
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::T0)
+        .addImm(0)
+        .addReg(Temple::ZERO); // load program counter
+    RegBuilder(ADD, Temple::T0);
+    RegBuilder(MOVE, Temple::T0);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x1)
+        .addReg(Temple::T0); // branch _N_ fallthrough
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x7)
+        .addReg(GetOperandReg(2)); // branch always $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BGE
+  case Temple::BLTU: {
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(1)
+        .addReg(GetOperandReg(2)); // branch __C $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BLTU
+  case Temple::BGEU: {
+    ImmBuilder(SETI, 11); // need verification
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::T0)
+        .addImm(0)
+        .addReg(Temple::ZERO); // load program counter
+    RegBuilder(ADD, Temple::T0);
+    RegBuilder(MOVE, Temple::T0);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(ADD, Temple::ONE); // two's compliment
+
+    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
+
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x1)
+        .addReg(Temple::T0); // branch __C fallthrough
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::ZERO)
+        .addImm(0x7)
+        .addReg(GetOperandReg(2)); // branch always $rc
+
+    MI.eraseFromParent();
+    return true;
+  } // BGEU
+  case Temple::SELECT: {
+    Register falsereg = GetOperandReg(3);
+    if (GetOperandReg(3) == Temple::ZERO || GetOperandReg(3) == Temple::ONE ||
+        GetOperandReg(3) == Temple::ALLONE) {
+      RegBuilder(NOR, Temple::ALLONE); // clear ACC
+      RegBuilder(ADD, GetOperandReg(3));
+      RegBuilder(MOVE, Temple::T1); // T1 = $rc(FALSEVAL)
+      falsereg = Temple::T1;
+    } // can't write to const register. copy to pseudo inst register and use it.
+    ImmBuilder(SETI, 10); // need verification
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::T0)
+        .addImm(0)
+        .addReg(Temple::ZERO); // load program counter
+    RegBuilder(ADD, Temple::T0);
+    RegBuilder(MOVE, Temple::T0); // jump address calculation
+
+    RegBuilder(NOR, Temple::ALLONE);   // clear ACC
+    RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb (COND)
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
+        .addReg(Temple::T0)
+        .addImm(7)
+        .addReg(Temple::ZERO); // branch Z__
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, GetOperandReg(2));
+    RegBuilder(MOVE, falsereg);      // $rd(FALSEVAL) = $rc(TRUEVAL)
+                                     // jump here
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, falsereg);
+    RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rd(FALSEVAL)
+    MI.eraseFromParent();
+    return true;
+  } // SELECT
   }
 }
 

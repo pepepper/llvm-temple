@@ -50,10 +50,10 @@ public:
   //                    SmallVectorImpl<MachineOperand> &Cond,
   //                    bool AllowModify) const override;
 
-  unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
-                        MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
-                        const DebugLoc &dl,
-                        int *BytesAdded = nullptr) const override;
+  // unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
+  //                       MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
+  //                       const DebugLoc &dl,
+  //                       int *BytesAdded = nullptr) const override;
 
   // unsigned removeBranch(MachineBasicBlock &MBB,
   //                       int *BytesRemoved = nullptr) const override;

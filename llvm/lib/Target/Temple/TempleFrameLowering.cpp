@@ -113,7 +113,6 @@ void TempleFrameLowering::emitPrologue(MachineFunction &MF,
   // register.
   const std::vector<CalleeSavedInfo> &CSI = MFI.getCalleeSavedInfo();
   std::advance(MBBI, CSI.size());
-
   // Generate new FP.
   if (hasFP(MF))
     adjustReg(MBB, MBBI, DL, FPReg, SPReg, StackSize, MachineInstr::FrameSetup);

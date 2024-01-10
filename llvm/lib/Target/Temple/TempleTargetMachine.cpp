@@ -91,4 +91,5 @@ void TemplePassConfig::addPreEmitPass() { addPass(&BranchRelaxationPassID); }
 
 void TemplePassConfig::addPreSched2() {
   addPass(createTempleExpandPseudoPass());
+  // Future Work: 連続計算時の最適化
 }

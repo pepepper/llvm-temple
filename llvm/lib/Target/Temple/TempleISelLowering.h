@@ -14,11 +14,7 @@ class TempleSubtarget;
 namespace TempleISD {
 enum NodeType : unsigned {
   FIRST_NUMBER = ISD::BUILTIN_OP_END,
-  ADD,
-  NOR,
-  BR_CC,
   CALL,
-  SELECT_CC,
   RET,
 };
 }
@@ -37,9 +33,9 @@ public:
   // This method returns the name of a target specific DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
-  MachineBasicBlock *
-  EmitInstrWithCustomInserter(MachineInstr &MI,
-                              MachineBasicBlock *BB) const override;
+//   MachineBasicBlock *
+//   EmitInstrWithCustomInserter(MachineInstr &MI,
+//                               MachineBasicBlock *BB) const override;
 
   std::pair<unsigned, const TargetRegisterClass *>
   getRegForInlineAsmConstraint(const TargetRegisterInfo *TRI,
@@ -66,7 +62,7 @@ private:
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerSELECT(SDValue Op, SelectionDAG &DAG) const;
+  // SDValue LowerSELECT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFRAMEADDR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerRETURNADDR(SDValue Op, SelectionDAG &DAG) const;
   SDValue EmitCMP(SDValue &LHS, SDValue &RHS, SDValue &TrueV, SDValue &FalseV,

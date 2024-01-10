@@ -21,21 +21,19 @@ def SDT_TempleCp : SDTypeProfile<0, 2, [SDTCisSameAs<0, 1>]>;
 def SDT_TempleSelectCC
     : SDTypeProfile<1, 3,
                     [SDTCisSameAs<0, 1>, SDTCisSameAs<1, 2>, SDTCisVT<3, i16>]>;
-def SDT_TempleBrCC
-    : SDTypeProfile<0, 2, [SDTCisVT<0, OtherVT>, SDTCisVT<1, i16>]>;
+def SDT_TempleCallSeqStart
+    : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
+def SDT_TempleCallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
 
 def Templeret : SDNode<"TempleISD::RET", SDTNone, [SDNPHasChain]>;
-
-// def Templeadd : SDNode<"TempleISD::ADD", SDTIntBinOp, [SDNPOutGlue]>;
-// def Templenor : SDNode<"TempleISD::NOR", SDTIntBinOp, [SDNPOutGlue]>;
-
-def Templeselectcc
-    : SDNode<"TempleISD::SELECT_CC", SDT_TempleSelectCC, [SDNPInGlue]>;
-def Templebrcc
-    : SDNode<"TempleISD::BR_CC", SDT_TempleBrCC, [SDNPHasChain, SDNPInGlue]>;
 def Templecall
     : SDNode<"TempleISD::CALL", SDT_TempleCall,
              [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue, SDNPVariadic]>;
+
+def CallSeqStart : SDNode<"ISD::CALLSEQ_START", SDT_TempleCallSeqStart,
+                          [SDNPHasChain, SDNPOutGlue]>;
+def CallSeqEnd : SDNode<"ISD::CALLSEQ_END", SDT_TempleCallSeqEnd,
+                        [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 //===----------------------------------------------------------------------===//
 // Instruction format superclass
 //===----------------------------------------------------------------------===//
@@ -80,13 +78,6 @@ def immcond3 : PatLeaf<(imm), [{ return isInt<3>(N->getZExtValue()); }]>;
 // def addr
 //     : ComplexPattern<iPTR, 2, "SelectAddr", [frameindex], [SDNPWantParent]>;
 
-def SDT_TempleCallSeqStart
-    : SDCallSeqStart<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
-def SDT_TempleCallSeqEnd : SDCallSeqEnd<[SDTCisVT<0, i16>, SDTCisVT<1, i16>]>;
-def CallSeqStart : SDNode<"ISD::CALLSEQ_START", SDT_TempleCallSeqStart,
-                          [SDNPHasChain, SDNPOutGlue]>;
-def CallSeqEnd : SDNode<"ISD::CALLSEQ_END", SDT_TempleCallSeqEnd,
-                        [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // Pattern fragment for load/store
@@ -115,18 +106,12 @@ def CallSeqEnd : SDNode<"ISD::CALLSEQ_END", SDT_TempleCallSeqEnd,
 //===----------------------------------------------------------------------===//
 // Temple Instructions
 //===----------------------------------------------------------------------===//
-/// Bitwise Instructions
-let Defs = [ACC, FLAG], Uses = [ACC] in {
+
+let Defs = [ACC, FLAG], Uses = [ACC], mayStore=0, mayLoad=0 in {
   def NOR : FF<0x00, (outs), (ins GPR : $ra), "nor\t$ra", IIAlu, []>;
+  def ADD : FF<0x01, (outs), (ins GPR : $ra), "add\t$ra", IIAlu, []>;
 }
-/// Arithmetic Instructions
-// IR "add" defined in include/llvm/Target/TargetSelectionDAG.td, line 315
-// (def add).
-let Defs = [ACC, FLAG] in {
-  let Uses = [ACC] in {
-    def ADD : FF<0x01, (outs), (ins GPR : $ra), "add\t$ra", IIAlu, []>;
-  }
-}
+
 /// Load and Store Instructions
 ///  aligned
 let canFoldAsLoad = 1, mayStore = 0, mayLoad = 1 in {
@@ -168,11 +153,3 @@ let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
 let mayStore = 0, mayLoad = 0, Uses = [ACC], Defs = [ACC, FLAG] in {
   def SRL : FFnoOP<0x07, (outs), (ins), "srl", IIAlu>;
 }
-
-//===----------------------------------------------------------------------===//
-//  Arbitrary patterns that map to one or more instructions
-//===----------------------------------------------------------------------===//
-def : Pat<(srl ACC, 1), (SRL)>;
-def : Pat<(add ACC, 1), (ADD ONE)>;
-def : Pat<(add ACC, -1), (ADD ALLONE)>;
-def : Pat<(not ACC), (NOR ZERO)>;

@@ -58,7 +58,7 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
     int FI = dyn_cast<FrameIndexSDNode>(Node)->getIndex();
     EVT VT = Node->getValueType(0);
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
-    
+
     ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDi, DL, VT, TFI, Imm));
     return;
   }
@@ -93,10 +93,6 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
 
-    // case ISD::CopyToReg:
-    //   if (Node->getOperand(1)==Temple::ACC){
-
-    //   }
   default:
     // Select the default instruction.
     SelectCode(Node);

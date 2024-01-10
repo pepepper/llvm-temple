@@ -17,4 +17,4 @@ def CC_Temple : CallingConv<[
   CCAssignToStack<2, 2> // The slot's size, the stack alignment
 ]>;
 
-def CSR : CalleeSavedRegs<(add(sequence "R%u", 0, 3))>;
+def CSR : CalleeSavedRegs<(add(sequence "R%u", 2, 3))>;

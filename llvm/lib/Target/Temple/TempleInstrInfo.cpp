@@ -26,16 +26,15 @@ void TempleInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator MBBI,
                                   const DebugLoc &DL, MCRegister DstReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  if (DstReg == Temple::ACC && SrcReg != Temple::ACC) { // Copy to Acc Reg.
-    BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
+  if (DstReg == Temple::ACC) { // Copy to Acc Reg.
+    BuildMI(MBB, MBBI, DL, get(Temple::NOR)).addReg(Temple::ALLONE);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
-  } else if (SrcReg == Temple::ACC &&
-             DstReg != Temple::ACC) { // Copy from Acc Reg.
+  } else if (SrcReg == Temple::ACC) { // Copy from Acc Reg.
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
   } else if (Temple::GPRRegClass.contains(SrcReg) &&
              Temple::GPRRegClass.contains(
                  DstReg)) { // Copy between General Regs.
-    BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
+    BuildMI(MBB, MBBI, DL, get(Temple::NOR)).addReg(Temple::ALLONE);
     BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
     BuildMI(MBB, MBBI, DL, get(Temple::MOVE)).addReg(DstReg);
   }
@@ -53,7 +52,7 @@ void TempleInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   if (!Temple::GPRRegClass.hasSubClassEq(RC))
     llvm_unreachable("Can't store this register to stack slot");
-  BuildMI(MBB, MBBI, DL, get(Temple::SETI)).addImm(0);
+  BuildMI(MBB, MBBI, DL, get(Temple::NOR)).addReg(Temple::ALLONE);
   BuildMI(MBB, MBBI, DL, get(Temple::ADD)).addReg(SrcReg);
   BuildMI(MBB, MBBI, DL, get(Temple::SD)).addFrameIndex(FI);
 }
@@ -102,10 +101,10 @@ void TempleInstrInfo::movImm16(MachineBasicBlock &MBB,
 // }
 
 // bool TempleInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
-//                                   MachineBasicBlock *&TBB,
-//                                   MachineBasicBlock *&FBB,
-//                                   SmallVectorImpl<MachineOperand> &Cond,
-//                                   bool AllowModify) const {
+//                                     MachineBasicBlock *&TBB,
+//                                     MachineBasicBlock *&FBB,
+//                                     SmallVectorImpl<MachineOperand> &Cond,
+//                                     bool AllowModify) const {
 //   TBB = FBB = nullptr;
 //   Cond.clear();
 
@@ -171,7 +170,7 @@ void TempleInstrInfo::movImm16(MachineBasicBlock &MBB,
 // }
 
 // unsigned TempleInstrInfo::removeBranch(MachineBasicBlock &MBB,
-//                                      int *BytesRemoved) const {
+//                                        int *BytesRemoved) const {
 //   if (BytesRemoved)
 //     *BytesRemoved = 0;
 
@@ -205,41 +204,42 @@ void TempleInstrInfo::movImm16(MachineBasicBlock &MBB,
 
 // Inserts a branch into the end of the specific MachineBasicBlock, returning
 // the number of instructions inserted.
-unsigned TempleInstrInfo::insertBranch(
-    MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
-    ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
-  if (BytesAdded)
-    *BytesAdded = 0;
+// unsigned TempleInstrInfo::insertBranch(
+//     MachineBasicBlock &MBB, MachineBasicBlock *TBB, MachineBasicBlock *FBB,
+//     ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const
+//     {
+//   if (BytesAdded)
+//     *BytesAdded = 0;
 
-  // Shouldn't be a fall through.
-  assert(TBB && "InsertBranch must not be told to insert a fallthrough");
-  assert((Cond.size() == 3 || Cond.size() == 0) &&
-         "Temple branch conditions have two components!");
+//   // Shouldn't be a fall through.
+//   assert(TBB && "InsertBranch must not be told to insert a fallthrough");
+//   assert((Cond.size() == 3 || Cond.size() == 0) &&
+//          "Temple branch conditions have two components!");
 
-  // Unconditional branch.
-  if (Cond.empty()) {
-    MachineInstr &MI = *BuildMI(&MBB, DL, get(Temple::JLAlways)).addMBB(TBB);
-    if (BytesAdded)
-      *BytesAdded = getInstSizeInBytes(MI);
-    return 1;
-  }
+//   // Unconditional branch.
+//   if (Cond.empty()) {
+//     MachineInstr &MI = *BuildMI(&MBB, DL, get(Temple::JLAlways)).addMBB(TBB);
+//     if (BytesAdded)
+//       *BytesAdded = getInstSizeInBytes(MI);
+//     return 1;
+//   }
 
-  // Either a one or two-way conditional branch.
-  unsigned Opc = Cond[0].getImm();
-  MachineInstr &CondMI = *BuildMI(&MBB, DL, get(Opc)).addMBB(TBB);
-  if (BytesAdded)
-    *BytesAdded += getInstSizeInBytes(CondMI);
+//   // Either a one or two-way conditional branch.
+//   unsigned Opc = Cond[0].getImm();
+//   MachineInstr &CondMI = *BuildMI(&MBB, DL, get(Opc)).addMBB(TBB);
+//   if (BytesAdded)
+//     *BytesAdded += getInstSizeInBytes(CondMI);
 
-  // One-way conditional branch.
-  if (!FBB)
-    return 1;
+//   // One-way conditional branch.
+//   if (!FBB)
+//     return 1;
 
-  // Two-way conditional branch.
-  MachineInstr &MI = *BuildMI(&MBB, DL, get(Temple::JLAlways)).addMBB(FBB);
-  if (BytesAdded)
-    *BytesAdded += getInstSizeInBytes(MI);
-  return 2;
-}
+//   // Two-way conditional branch.
+//   MachineInstr &MI = *BuildMI(&MBB, DL, get(Temple::JLAlways)).addMBB(FBB);
+//   if (BytesAdded)
+//     *BytesAdded += getInstSizeInBytes(MI);
+//   return 2;
+// }
 
 // bool TempleInstrInfo::reverseBranchCondition(
 //     SmallVectorImpl<MachineOperand> &Cond) const {

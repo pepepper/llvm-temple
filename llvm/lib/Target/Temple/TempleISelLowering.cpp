@@ -48,12 +48,12 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
   //   setOperationAction(ISD::SUBC, MVT::i16, Expand);
   // TODO: add all necessary setOperationAction calls.
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
+  setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
+  setOperationAction(ISD::BR_CC, MVT::i16, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i16, Expand);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::i16, Custom);
-  setOperationAction(ISD::SETCC, MVT::i16, Expand);
+  // setOperationAction(ISD::SETCC, MVT::i16, Expand);
   for (auto VT : {MVT::i1, MVT::i8})
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
 
@@ -90,14 +90,14 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
   default:
     report_fatal_error("unimplemented operand");
 
-    // case ISD::BR_CC:
-    //   return LowerBR_CC(Op, DAG);
+  case ISD::BR_CC:
+    return LowerBR_CC(Op, DAG);
 
   case ISD::BR:
     return LowerBR(Op, DAG);
 
-  case ISD::SELECT_CC:
-    return LowerSELECT(Op, DAG);
+    // case ISD::SELECT_CC:
+    //   return LowerSELECT(Op, DAG);
 
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
@@ -121,88 +121,53 @@ SDValue TempleTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getNode(ISD::BRIND, dl, VT, Chain, DAG.getRegister(Reg, MVT::i16));
 }
 
-SDValue TempleTargetLowering::EmitCMP(SDValue &LHS, SDValue &RHS,
-                                      SDValue &TrueV, SDValue &FalseV,
-                                      SDValue &TempleCC, ISD::CondCode CC,
-                                      SDLoc dl, SelectionDAG &DAG) const {
-  EVT VT = LHS.getValueType();
+// SDValue TempleTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG)
+// const {
+//   SDLoc dl(Op);
+//   EVT VT = Op.getValueType();
+//   SDValue LHS = Op.getOperand(0);
+//   SDValue RHS = Op.getOperand(1);
+//   SDValue TrueV = Op.getOperand(2);
+//   SDValue FalseV = Op.getOperand(3);
+//   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
 
-  assert(!VT.isFloatingPoint() && "We don't handle FP yet");
-  assert((VT == MVT::i16) && "Invalid type in EmitCMP");
+//   return DAG.getNode(TempleISD::SELECT_CC, dl, VT, TrueV, FalseV, TempleCC,
+//                      Flag);
+// }
 
-  Temple::CondCode TCC = Temple::COND_INVALID;
+SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
+   
+  SDLoc dl(Op);
+  EVT VT = Op.getValueType();
+
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
   switch (CC) {
-  case ISD::SETUNE:
-  case ISD::SETNE:
-    std::swap(TrueV, FalseV);
-  case ISD::SETUEQ:
   case ISD::SETEQ:
-    TCC = Temple::COND_Z;
-    break;
-
-  case ISD::SETUGT:
-    std::swap(LHS, RHS);
-  case ISD::SETULT:
-    TCC = Temple::COND_C;
-    break;
-  case ISD::SETULE:
-    std::swap(LHS, RHS);
-  case ISD::SETUGE:
-    std::swap(TrueV, FalseV);
-    TCC = Temple::COND_C;
-    break;
-
-  case ISD::SETLE:
-    std::swap(LHS, RHS);
-  case ISD::SETGE:
-    std::swap(TrueV, FalseV);
-    TCC = Temple::COND_M;
-    break;
+    return SDValue(DAG.getMachineNode(Temple::BEQ, dl, VT, LHS, RHS, Op.getOperand(4)),0);
+  case ISD::SETNE:{
+    SDValue a=SDValue(DAG.getMachineNode(Temple::BNE, dl, VT, LHS, RHS, Op.getOperand(4)),0);
+    a.dump(&DAG);
+    return a;
+  }
   case ISD::SETGT:
     std::swap(LHS, RHS);
   case ISD::SETLT:
-    TCC = Temple::COND_M;
-    break;
+    return SDValue(DAG.getMachineNode(Temple::BLT, dl, VT, LHS, RHS, Op.getOperand(4)),0);
+  case ISD::SETLE:
+    std::swap(LHS, RHS);
+  case ISD::SETGE:
+    return SDValue(DAG.getMachineNode(Temple::BGE, dl, VT, LHS, RHS, Op.getOperand(4)),0);
+  case ISD::SETULT:
+    return SDValue(DAG.getMachineNode(Temple::BLTU, dl, VT, LHS, RHS, Op.getOperand(4)),0);
+  case ISD::SETUGE:
+    return SDValue(DAG.getMachineNode(Temple::BGEU, dl, VT, LHS, RHS, Op.getOperand(4)),0);
   default:
-    llvm_unreachable("Invalid integer condition!");
+  dbgs()<<"LowerBR_CC:lowering failed?\n";
+    break;
   }
-  TempleCC = DAG.getConstant(TCC, dl, MVT::i16);
-
-  return DAG.getNode(ISD::SUBC, dl, DAG.getVTList(VT, MVT::Glue), LHS, RHS)
-      .getValue(1);
 }
-
-SDValue TempleTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc dl(Op);
-  EVT VT = Op.getValueType();
-  SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
-  SDValue TrueV = Op.getOperand(2);
-  SDValue FalseV = Op.getOperand(3);
-  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
-
-  SDValue TempleCC;
-  SDValue Flag = EmitCMP(LHS, RHS, TrueV, FalseV, TempleCC, CC, dl, DAG);
-
-  return DAG.getNode(TempleISD::SELECT_CC, dl, VT, TrueV, FalseV, TempleCC,
-                     Flag);
-}
-
-// SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const
-// {
-//   SDLoc dl(Op);
-//   EVT VT = Op.getValueType();
-//   SDValue Chain = Op.getOperand(0);
-//   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
-//   SDValue LHS = Op.getOperand(2);
-//   SDValue RHS = Op.getOperand(3);
-//   SDValue Dest = Op.getOperand(4);
-
-//   SDValue TempleCC;
-//   SDValue Flag = EmitCMP(LHS, RHS, TempleCC, CC, dl, DAG);
-
-//   return DAG.getNode(TempleISD::BR_CC, dl, VT, Chain, Dest, TempleCC, Flag);
-// }
 
 SDValue TempleTargetLowering::LowerGlobalAddress(SDValue Op,
                                                  SelectionDAG &DAG) const {
@@ -270,81 +235,88 @@ SDValue TempleTargetLowering::LowerRETURNADDR(SDValue Op,
   return DAG.getCopyFromReg(DAG.getEntryNode(), DL, Reg, MVT::i16);
 }
 
-static unsigned getBranchOpcodeForIntCondCode(Temple::CondCode CC) {
-  switch (CC) {
-  default:
-    llvm_unreachable("Unsupported CondCode");
-  case Temple::COND_Z:
-    return Temple::JLZero;
-  case Temple::COND_C:
-    return Temple::JLCarry;
-  case Temple::COND_M:
-    return Temple::JLNeg;
-  }
-}
+// static unsigned getBranchOpcodeForIntCondCode(Temple::CondCode CC) {
+//   switch (CC) {
+//   default:
+//     llvm_unreachable("Unsupported CondCode");
+//   case Temple::COND_Z:
+//     return Temple::JLZero;
+//   case Temple::COND_C:
+//     return Temple::JLCarry;
+//   case Temple::COND_M:
+//     return Temple::JLNeg;
+//   }
+// }
 
-MachineBasicBlock *
-TempleTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
-                                                  MachineBasicBlock *BB) const {
-  const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
-  DebugLoc DL = MI.getDebugLoc();
+// MachineBasicBlock *
+// TempleTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+//                                                   MachineBasicBlock *BB)
+//                                                   const {
+//   const TargetInstrInfo &TII =
+//   *BB->getParent()->getSubtarget().getInstrInfo(); DebugLoc DL =
+//   MI.getDebugLoc();
 
-  // assert(MI.getOpcode() == Temple::Select_GPR_Using_CC_GPR &&
-  //        "Unexpected instr type to insert");
+//   // assert(MI.getOpcode() == Temple::Select_GPR_Using_CC_GPR &&
+//   //        "Unexpected instr type to insert");
 
-  // To "insert" a SELECT instruction, we actually have to insert the triangle
-  // control-flow pattern.  The incoming instruction knows the destination vreg
-  // to set, the condition code register to branch on, the true/false values to
-  // select between, and the condcode to use to select the appropriate branch.
-  //
-  // We produce the following control flow:
-  //     HeadMBB
-  //     |  \
-  //     |  IfFalseMBB
-  //     | /
-  //    TailMBB
-  const BasicBlock *LLVM_BB = BB->getBasicBlock();
-  MachineFunction::iterator I = ++BB->getIterator();
+//   // To "insert" a SELECT instruction, we actually have to insert the
+//   triangle
+//   // control-flow pattern.  The incoming instruction knows the destination
+//   vreg
+//   // to set, the condition code register to branch on, the true/false values
+//   to
+//   // select between, and the condcode to use to select the appropriate
+//   branch.
+//   //
+//   // We produce the following control flow:
+//   //     HeadMBB
+//   //     |  \
+//   //     |  IfFalseMBB
+//   //     | /
+//   //    TailMBB
+//   const BasicBlock *LLVM_BB = BB->getBasicBlock();
+//   MachineFunction::iterator I = ++BB->getIterator();
 
-  MachineBasicBlock *HeadMBB = BB;
-  MachineFunction *F = BB->getParent();
-  MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
-  MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
+//   MachineBasicBlock *HeadMBB = BB;
+//   MachineFunction *F = BB->getParent();
+//   MachineBasicBlock *TailMBB = F->CreateMachineBasicBlock(LLVM_BB);
+//   MachineBasicBlock *IfFalseMBB = F->CreateMachineBasicBlock(LLVM_BB);
 
-  F->insert(I, IfFalseMBB);
-  F->insert(I, TailMBB);
-  // Move all remaining instructions to TailMBB.
-  TailMBB->splice(TailMBB->begin(), HeadMBB,
-                  std::next(MachineBasicBlock::iterator(MI)), HeadMBB->end());
-  // Update machine-CFG edges by transferring all successors of the current
-  // block to the new block which will contain the Phi node for the select.
-  TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
-  // Set the successors for HeadMBB.
-  HeadMBB->addSuccessor(IfFalseMBB);
-  HeadMBB->addSuccessor(TailMBB);
+//   F->insert(I, IfFalseMBB);
+//   F->insert(I, TailMBB);
+//   // Move all remaining instructions to TailMBB.
+//   TailMBB->splice(TailMBB->begin(), HeadMBB,
+//                   std::next(MachineBasicBlock::iterator(MI)),
+//                   HeadMBB->end());
+//   // Update machine-CFG edges by transferring all successors of the current
+//   // block to the new block which will contain the Phi node for the select.
+//   TailMBB->transferSuccessorsAndUpdatePHIs(HeadMBB);
+//   // Set the successors for HeadMBB.
+//   HeadMBB->addSuccessor(IfFalseMBB);
+//   HeadMBB->addSuccessor(TailMBB);
 
-  // Insert appropriate branch.
-  unsigned LHS = MI.getOperand(1).getReg();
-  unsigned RHS = MI.getOperand(2).getReg();
-  auto CC = static_cast<Temple::CondCode>(MI.getOperand(3).getImm());
-  unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
+//   // Insert appropriate branch.
+//   unsigned LHS = MI.getOperand(1).getReg();
+//   unsigned RHS = MI.getOperand(2).getReg();
+//   auto CC = static_cast<Temple::CondCode>(MI.getOperand(3).getImm());
+//   unsigned Opcode = getBranchOpcodeForIntCondCode(CC);
 
-  BuildMI(HeadMBB, DL, TII.get(Opcode)).addMBB(TailMBB);
+//   BuildMI(HeadMBB, DL, TII.get(Opcode)).addMBB(TailMBB);
 
-  // IfFalseMBB just falls through to TailMBB.
-  IfFalseMBB->addSuccessor(TailMBB);
+//   // IfFalseMBB just falls through to TailMBB.
+//   IfFalseMBB->addSuccessor(TailMBB);
 
-  // %Result = phi [ %TrueValue, HeadMBB ], [ %FalseValue, IfFalseMBB ]
-  BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Temple::PHI),
-          MI.getOperand(0).getReg())
-      .addReg(MI.getOperand(4).getReg())
-      .addMBB(HeadMBB)
-      .addReg(MI.getOperand(5).getReg())
-      .addMBB(IfFalseMBB);
+//   // %Result = phi [ %TrueValue, HeadMBB ], [ %FalseValue, IfFalseMBB ]
+//   BuildMI(*TailMBB, TailMBB->begin(), DL, TII.get(Temple::PHI),
+//           MI.getOperand(0).getReg())
+//       .addReg(MI.getOperand(4).getReg())
+//       .addMBB(HeadMBB)
+//       .addReg(MI.getOperand(5).getReg())
+//       .addMBB(IfFalseMBB);
 
-  MI.eraseFromParent(); // The pseudo instruction is gone now.
-  return TailMBB;
-}
+//   MI.eraseFromParent(); // The pseudo instruction is gone now.
+//   return TailMBB;
+// }
 
 // Calling Convention Implementation.
 #include "TempleGenCallingConv.inc"
@@ -619,16 +591,8 @@ const char *TempleTargetLowering::getTargetNodeName(unsigned Opcode) const {
   switch ((TempleISD::NodeType)Opcode) {
   case TempleISD::FIRST_NUMBER:
     break;
-  case TempleISD::ADD:
-    return "TempleISD::ADD";
-  case TempleISD::NOR:
-    return "TempleISD::NOR";
-  case TempleISD::BR_CC:
-    return "TempleISD::BR_CC";
   case TempleISD::CALL:
     return "TempleISD::CALL";
-  case TempleISD::SELECT_CC:
-    return "TempleISD::SELECT_CC";
   case TempleISD::RET:
     return "TempleISD::RET";
   }
