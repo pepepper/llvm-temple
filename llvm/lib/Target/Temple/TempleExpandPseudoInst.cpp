@@ -56,6 +56,38 @@ INITIALIZE_PASS(TempleExpandPseudo, DEBUG_TYPE, TEMPLE_EXPAND_PSEUDO_NAME,
 #define GetOperandImm(opnum) MI.getOperand(opnum).getImm()
 #define GetOperandReg(opnum) MI.getOperand(opnum).getReg()
 
+#define ADDrPseudo(Reg1, Reg2)                                                 \
+  RegBuilder(NOR, Temple::ALLONE);                                             \
+  RegBuilder(ADD, Reg1);                                                       \
+  RegBuilder(ADD, Reg2);
+#define ADDiPseudo(Reg, Imm)                                                   \
+  ImmBuilder(SETI, Imm);                                                       \
+  RegBuilder(ADD, Reg);
+
+#define SUBrPseudo(Reg1, Reg2)                                                 \
+  RegBuilder(NOR, Temple::ALLONE);                                             \
+  RegBuilder(NOR, Reg2);                                                       \
+  RegBuilder(ADD, Temple::ONE);                                                \
+  RegBuilder(ADD, Reg1);
+#define SUBiPseudo(Reg, Imm)                                                   \
+  ImmBuilder(SETI, Imm);                                                       \
+  RegBuilder(NOR, Temple::ZERO);                                               \
+  RegBuilder(ADD, Temple::ONE);                                                \
+  RegBuilder(ADD, Reg);
+
+#define COND_Z (0x4)
+#define COND_N (0x2)
+#define COND_C (0x1)
+#define COND_ALWAYS (0x7)
+#define COND_NEVER (0x0)
+
+#define JLBuilder(pcdest, cond, jumpdest)                                      \
+  BuildMI(MBB, MBBI, MI.getDebugLoc(),                                         \
+          MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))     \
+      .addReg(pcdest)                                                          \
+      .addImm(cond)                                                            \
+      .addReg(jumpdest);
+
 bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator MBBI,
                                   MachineBasicBlock::iterator &NextMBBI) {
@@ -65,8 +97,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
   default:
     return false;
   case Temple::ADDi: {
-    ImmBuilder(SETI, GetOperandImm(2)); // ACC = imm16
-    RegBuilder(ADD, GetOperandReg(1));  // ACC = ACC + $rb
+    ADDiPseudo(GetOperandReg(1), GetOperandImm(2));
 
     RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
 
@@ -74,10 +105,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // ADDi
   case Temple::ADDr: {
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    RegBuilder(ADD, GetOperandReg(1)); // ACC = ACC + $rb
-    RegBuilder(ADD, GetOperandReg(2)); // ACC = ACC + $rc
+    ADDrPseudo(GetOperandReg(1), GetOperandReg(2));
 
     RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
 
@@ -86,12 +114,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
   } // ADDr
 
   case Temple::SUBi: {
-    ImmBuilder(SETI, GetOperandImm(2)); // ACC = imm16
-
-    RegBuilder(NOR, Temple::ZERO);
-    RegBuilder(ADD, Temple::ONE); // ACC = neg(ACC)
-
-    RegBuilder(ADD, GetOperandReg(1)); // ACC = ACC + $rb
+    SUBiPseudo(GetOperandReg(1), GetOperandImm(2));
 
     RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
 
@@ -99,13 +122,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // SUBi
   case Temple::SUBr: {
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    RegBuilder(ADD, GetOperandReg(2)); // ACC = ACC + $rc
-    RegBuilder(NOR, Temple::ZERO);
-    RegBuilder(ADD, Temple::ONE); // ACC = neg(ACC)
-
-    RegBuilder(ADD, GetOperandReg(1)); // ACC = ACC + $rb
+    SUBiPseudo(GetOperandReg(1), GetOperandReg(2));
 
     RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
 
@@ -127,7 +144,21 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
     MI.eraseFromParent();
     return true;
-  } // SRLi
+  }                                  // SRLi
+  case Temple::SLLi: {               //$ra = SRL * imm16
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
+    for (int i = 0; i < MI.getOperand(2).getImm(); i++) {
+      RegBuilder(MOVE, Temple::T0);
+      RegBuilder(ADD, Temple::T0);
+    } // ACC = ACC*2
+
+    RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
+
+    MI.eraseFromParent();
+    return true;
+  } // SLLi
 
   case Temple::ANDi: {               //$ra = ($rb NOR 0) NOR (imm16 NOR 0)
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -237,14 +268,21 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // XORr
 
-  case Temple::STORE: {
+  case Temple::STOREr: {
     ImmBuilder(SETI, 0);
     RegBuilder(ADD, GetOperandReg(0));
     RegBuilder(SD, GetOperandReg(1));
 
     MI.eraseFromParent();
     return true;
-  } // STORE
+  } // STOREr
+  case Temple::STOREi: {
+    ImmBuilder(SETI, GetOperandImm(0));
+    RegBuilder(SD, GetOperandReg(1));
+
+    MI.eraseFromParent();
+    return true;
+  } // STOREi
   case Temple::LOAD: {
     RegBuilder(LD, GetOperandReg(1));
     RegBuilder(MOVE, GetOperandReg(0));
@@ -252,186 +290,490 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // LOAD
 
-  case Temple::BEQ: {
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
-
+  case Temple::BR: {
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(4)
-        .addReg(GetOperandReg(2)); // branch Z__ $rc
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T0); // copy destination to T0
+    JLBuilder(Temple::ZERO, COND_ALWAYS, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+
+  case Temple::BEQ: {
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2));
+
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T1); // branch Z__ $rc
 
     MI.eraseFromParent();
     return true;
   } // BEQ
   case Temple::BNE: {
-    ImmBuilder(SETI, 11); // need verification
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::T0)
-        .addImm(0)
-        .addReg(Temple::ZERO); // load program counter
-    RegBuilder(ADD, Temple::T0);
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load program counter
+    ADDiPseudo(Temple::T0, 14);                      // need verification
+
     RegBuilder(MOVE, Temple::T0);
 
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2)); //$ra-$rb
 
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
-
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x4)
-        .addReg(Temple::T0); // branch Z__ fallthrough
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x7)
-        .addReg(GetOperandReg(2)); // branch always $rc
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T0);      // branch Z__ fallthrough
+    JLBuilder(Temple::ZERO, COND_ALWAYS, Temple::T1); // branch always $rc
 
     MI.eraseFromParent();
     return true;
   } // BNE
   case Temple::BLT: {
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
-
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(2)
-        .addReg(GetOperandReg(2)); // branch _N_ $rc
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2)); // $ra-$rb
+
+    JLBuilder(Temple::ZERO, COND_N, Temple::T1); // branch _N_ $rc
 
     MI.eraseFromParent();
     return true;
   } // BLT
   case Temple::BGE: {
-    ImmBuilder(SETI, 11); // need verification
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::T0)
-        .addImm(0)
-        .addReg(Temple::ZERO); // load program counter
-    RegBuilder(ADD, Temple::T0);
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load program counter
+    ADDiPseudo(Temple::T0, 14);                      // need verification
     RegBuilder(MOVE, Temple::T0);
 
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2)); //$ra-$rb
 
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
-
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x1)
-        .addReg(Temple::T0); // branch _N_ fallthrough
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x7)
-        .addReg(GetOperandReg(2)); // branch always $rc
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);      // branch _N_ fallthrough
+    JLBuilder(Temple::ZERO, COND_ALWAYS, Temple::T1); // branch always $rc
 
     MI.eraseFromParent();
     return true;
   } // BGE
   case Temple::BLTU: {
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); // $ra-$rb
-
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(1)
-        .addReg(GetOperandReg(2)); // branch __C $rc
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2)); //$ra-$rb
+
+    JLBuilder(Temple::ZERO, COND_C, Temple::T1); // branch __C $rc
 
     MI.eraseFromParent();
     return true;
   } // BLTU
   case Temple::BGEU: {
-    ImmBuilder(SETI, 11); // need verification
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::T0)
-        .addImm(0)
-        .addReg(Temple::ZERO); // load program counter
-    RegBuilder(ADD, Temple::T0);
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
+    RegBuilder(MOVE, Temple::T1); // copy destination to T1
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load program counter
+    ADDiPseudo(Temple::T0, 14);                      // need verification
     RegBuilder(MOVE, Temple::T0);
 
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    SUBrPseudo(GetOperandReg(1), GetOperandReg(2)); //$ra-$rb
 
-    RegBuilder(NOR, GetOperandReg(1));
-    RegBuilder(ADD, Temple::ONE); // two's compliment
-
-    RegBuilder(ADD, GetOperandReg(1)); //$ra-$rb
-
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x1)
-        .addReg(Temple::T0); // branch __C fallthrough
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::ZERO)
-        .addImm(0x7)
-        .addReg(GetOperandReg(2)); // branch always $rc
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);      // branch __C fallthrough
+    JLBuilder(Temple::ZERO, COND_ALWAYS, Temple::T1); // branch always $rc
 
     MI.eraseFromParent();
     return true;
   } // BGEU
   case Temple::SELECT: {
-    Register falsereg = GetOperandReg(3);
-    if (GetOperandReg(3) == Temple::ZERO || GetOperandReg(3) == Temple::ONE ||
-        GetOperandReg(3) == Temple::ALLONE) {
       RegBuilder(NOR, Temple::ALLONE); // clear ACC
       RegBuilder(ADD, GetOperandReg(3));
-      RegBuilder(MOVE, Temple::T1); // T1 = $rc(FALSEVAL)
-      falsereg = Temple::T1;
-    } // can't write to const register. copy to pseudo inst register and use it.
-    ImmBuilder(SETI, 10); // need verification
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::T0)
-        .addImm(0)
-        .addReg(Temple::ZERO); // load program counter
-    RegBuilder(ADD, Temple::T0);
-    RegBuilder(MOVE, Temple::T0); // jump address calculation
+    RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rd(FALSEVAL)
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load program counter
+    ADDiPseudo(Temple::T0, 13);                      // need verification
+    RegBuilder(MOVE, Temple::T0);                    // jump address calculation
 
     RegBuilder(NOR, Temple::ALLONE);   // clear ACC
     RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb (COND)
-    BuildMI(MBB, MBBI, MI.getDebugLoc(),
-            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::JL))
-        .addReg(Temple::T0)
-        .addImm(7)
-        .addReg(Temple::ZERO); // branch Z__
+    JLBuilder(Temple::ZERO, COND_Z,
+              Temple::T0); // branch Z__ (jump if cond is 0)
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, GetOperandReg(2));
-    RegBuilder(MOVE, falsereg);      // $rd(FALSEVAL) = $rc(TRUEVAL)
+    RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rc(TRUEVAL)
                                      // jump here
-    RegBuilder(NOR, Temple::ALLONE); // clear ACC
-    RegBuilder(ADD, falsereg);
-    RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rd(FALSEVAL)
     MI.eraseFromParent();
     return true;
   } // SELECT
+
+  case Temple::SETEQi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value(true) to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T0);
+
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETNEi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETLTi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETGTi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETLEi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETGEi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETULTi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETUGTi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETULEi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETUGEi: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = Temple::T1;
+
+    ImmBuilder(SETI, GetOperandImm(1));
+    RegBuilder(MOVE, Temple::T1); // copy to temp reg
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+
+  case Temple::SETEQr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value(true) to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETNEr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_Z, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETLTr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETGTr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETLEr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETGEr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_N, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETULTr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETUGTr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ONE);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETULEr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(RHS, LHS); // $rb-$ra
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
+  case Temple::SETUGEr: {
+    Register LHS = GetOperandReg(0);
+    Register RHS = GetOperandReg(1);
+
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, Temple::ZERO);
+    RegBuilder(MOVE, GetOperandReg(0)); // set default value to $ra
+
+    JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load PC
+    ADDiPseudo(Temple::T0, 11); // jump address calculation, need verification
+
+    SUBiPseudo(LHS, RHS); // $ra-$rb
+    JLBuilder(Temple::ZERO, COND_C, Temple::T0);
+    MI.eraseFromParent();
+    return true;
+  }
   }
 }
 

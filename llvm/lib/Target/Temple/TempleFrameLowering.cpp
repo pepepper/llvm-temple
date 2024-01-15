@@ -16,14 +16,12 @@ using namespace llvm;
 // pointer register.  This is true if the function has variable sized allocas or
 // if frame pointer elimination is disabled.
 bool TempleFrameLowering::hasFP(const MachineFunction &MF) const {
-  // const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
-  // const MachineFrameInfo &MFI = MF.getFrameInfo();
+  const TargetRegisterInfo *RegInfo = MF.getSubtarget().getRegisterInfo();
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
 
-  // return MF.getTarget().Options.DisableFramePointerElim(MF) ||
-  //        RegInfo->needsStackRealignment(MF) || MFI.hasVarSizedObjects() ||
-  //        MFI.isFrameAddressTaken();
-  return false; // I don't wanna use frame pointer because I'm too lazy to impl
-                // address calcuration
+  return MF.getTarget().Options.DisableFramePointerElim(MF) ||
+         RegInfo->hasStackRealignment(MF) || MFI.hasVarSizedObjects() ||
+         MFI.isFrameAddressTaken();
 }
 
 // Determines the size of the frame and maximum call frame size.

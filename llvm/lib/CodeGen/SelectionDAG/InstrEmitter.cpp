@@ -267,7 +267,7 @@ void InstrEmitter::CreateVirtualRegisters(SDNode *Node,
 /// of the specified node.
 Register InstrEmitter::getVR(SDValue Op,
                              DenseMap<SDValue, Register> &VRBaseMap) {
-  if (Op.isMachineOpcode() &&
+                                  if (Op.isMachineOpcode() &&
       Op.getMachineOpcode() == TargetOpcode::IMPLICIT_DEF) {
     // Add an IMPLICIT_DEF instruction before every use.
     // IMPLICIT_DEF can produce any type of result so its MCInstrDesc

@@ -81,7 +81,7 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
       return;
     } else {
       SDValue New = CurDAG->getTargetConstant(ConstNode->getSExtValue(),
-                                              SDLoc(Node), MVT::i16);
+      SDLoc(Node), MVT::i16);
       ReplaceNode(Node, New.getNode());
       return;
     }

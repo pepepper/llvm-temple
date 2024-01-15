@@ -1,5 +1,9 @@
 include "TempleInstrInfo.td"
 
+def brtarget : Operand<OtherVT> {
+  let EncoderMethod = "getBREncoding";
+}
+
 multiclass ALUI<SDNode ops> {
   def r : Pseudo<(outs GPR:$ra), // $ra = $rb ops $rc
                  (ins GPR:$rb, GPR:$rc),
@@ -17,19 +21,24 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   defm ADD : ALUI<add>;
   defm SUB : ALUI<sub>;
   /// Bitwise Instructions
-  // 即値右シフト以外のシフトはLLVMが展開してくれることを祈る
   def SRLi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc
                     (ins GPR:$rb, i16imm:$imm16),
                     [(set GPR:$ra, (srl GPR:$rb, imm:$imm16))]>;
+  def SLLi : Pseudo<(outs GPR:$ra), // $ra = $rb << $rc
+                    (ins GPR:$rb, i16imm:$imm16),
+                    [(set GPR:$ra, (shl GPR:$rb, imm:$imm16))]>;
 
   defm AND : ALUI<and>;
   defm OR : ALUI<or>;
   defm XOR : ALUI<xor>;
 }
 
-def STORE : Pseudo<(outs), // *($rb) = $ra
+def STOREr : Pseudo<(outs), // *($rb) = $ra
                    (ins GPR:$ra, GPR:$rb),
                    [(store GPR:$ra, GPR:$rb)]>;
+def STOREi : Pseudo<(outs), // *($rb) = imm
+                   (ins i16imm:$imm, GPR:$rb),
+                   [(store imm:$imm, GPR:$rb)]>;
 def LOAD : Pseudo<(outs GPR:$rb), // $rb = *($ra)
                   (ins GPR:$ra),
                   [(set GPR:$rb, (load GPR:$ra))]>;
@@ -53,10 +62,13 @@ let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
     def JLAlways : Pseudo<(outs GPR:$ra),
                           (ins GPR:$rb)>,
                    PseudoInstExpansion<(JL GPR:$ra, 7, GPR:$rb)>;
-    def branch : Pseudo<(outs),
+    def BRIND : Pseudo<(outs),
                         (ins GPR:$ra),
                         [(brind GPR:$ra)]>,
                  PseudoInstExpansion<(JL ZERO, 7, GPR:$ra)>;
+    def BR : Pseudo<(outs),
+                        (ins brtarget:$ra),
+                        [(br bb:$ra)]>;
   }
   def JLNever : Pseudo<(outs GPR:$ra),
                        (ins)>,
@@ -77,29 +89,50 @@ let isCall = 1, isBarrier = 1,hasSideEffects = 0,
 let isIndirectBranch = 1, isTerminator = 1, hasSideEffects = 0, mayLoad = 0,
     mayStore = 0 in {
   def BEQ : Pseudo<(outs),
-                   (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                   (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                    []>; // branch $rc if $ra=$rb
   def BNE : Pseudo<(outs),
-                   (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                   (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                    []>; // branch $rc if $ra!=$rb
   def BLT : Pseudo<(outs),
-                   (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                   (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                    []>; // branch $rc if $ra<$rb
   def BGE : Pseudo<(outs),
-                   (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                   (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                    []>; // branch $rc if $ra>=$rb
   def BLTU : Pseudo<(outs),
-                    (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                    (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                     []>; // branch $rc if $ra<$rb
   def BGEU : Pseudo<(outs),
-                    (ins GPR:$ra, GPR:$rb, GPR:$rc),
+                    (ins brtarget:$rc, GPR:$ra, GPR:$rb),
                     []>; // branch $rc if $ra>=$rb
+}
+
+multiclass SETCC<CondCode cond> {
+  def r : Pseudo<(outs GPR:$ra), // $ra = $rb ops $rc
+                 (ins GPR:$rb, GPR:$rc),
+                 [(set GPR:$ra,(setcc GPR:$rb,GPR:$rc,cond))]>;
+
+  def i : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
+                 (ins GPR:$rb, i16imm:$imm),
+                 [(set GPR:$ra,(setcc GPR:$rb,imm:$imm,cond))]>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {
   def SELECT : Pseudo<(outs GPR:$ra),
                      (ins GPR:$rb, GPR:$rc, GPR:$rd),
                      []>; // $ra = $rb ? $rc : $rd
+  defm SETEQ : SETCC<SETEQ>;
+  defm SETNE : SETCC<SETNE>;
+  defm SETLT : SETCC<SETLT>;
+  defm SETGT : SETCC<SETGT>;
+  defm SETLE : SETCC<SETLE>;
+  defm SETGE : SETCC<SETGE>;
+  defm SETULT : SETCC<SETULT>;
+  defm SETUGT : SETCC<SETUGT>;
+  defm SETULE : SETCC<SETULE>;
+  defm SETUGE : SETCC<SETUGE>;
+
 }
 
 def : Pat<(select GPR:$rb, GPR:$rc, GPR:$rd), (SELECT GPR:$rb, GPR:$rc, GPR:$rd)>;
