@@ -21,12 +21,15 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   defm ADD : ALUI<add>;
   defm SUB : ALUI<sub>;
   /// Bitwise Instructions
-  def SRLi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc
+  def SRLi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc(unsigned)
                     (ins GPR:$rb, i16imm:$imm16),
                     [(set GPR:$ra, (srl GPR:$rb, imm:$imm16))]>;
   def SLLi : Pseudo<(outs GPR:$ra), // $ra = $rb << $rc
                     (ins GPR:$rb, i16imm:$imm16),
                     [(set GPR:$ra, (shl GPR:$rb, imm:$imm16))]>;
+  def SRAi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc (signed)
+                    (ins GPR:$rb, i16imm:$imm16),
+                    [(set GPR:$ra, (sra GPR:$rb, imm:$imm16))]>;               
 
   defm AND : ALUI<and>;
   defm OR : ALUI<or>;

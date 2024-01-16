@@ -130,7 +130,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // SUBr
 
-  case Temple::SRLi: {               //$ra = SRL * imm16
+  case Temple::SRLi: {               //$ra = SRL x imm16
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
 
     RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
@@ -145,7 +145,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     MI.eraseFromParent();
     return true;
   }                                  // SRLi
-  case Temple::SLLi: {               //$ra = SRL * imm16
+  case Temple::SLLi: {               //$ra = ($rb+$rb) x imm16
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
 
     RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
@@ -159,6 +159,32 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     MI.eraseFromParent();
     return true;
   } // SLLi
+
+  case Temple::SRAi: {               //$ra = SRA * imm16
+                                     // TODO: optimization
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+
+    RegBuilder(ADD, Temple::ALLONE);
+    BuildMI(MBB, MBBI, MI.getDebugLoc(),
+            MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SRL));
+    RegBuilder(NOR, GetOperandReg(1));
+    RegBuilder(MOVE, Temple::T1); // get MSB
+
+    RegBuilder(NOR, Temple::ALLONE);   // clear ACC
+    RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
+
+    for (int i = 0; i < MI.getOperand(2).getImm(); i++) {
+      BuildMI(MBB, MBBI, MI.getDebugLoc(),
+              MBB.getParent()->getSubtarget().getInstrInfo()->get(
+                  Temple::SRL));   // ACC >> 1
+      RegBuilder(ADD, Temple::T1); // copy MSB
+    }
+
+    RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
+
+    MI.eraseFromParent();
+    return true;
+  } // SRAi
 
   case Temple::ANDi: {               //$ra = ($rb NOR 0) NOR (imm16 NOR 0)
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -293,7 +319,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
   case Temple::BR: {
     BuildMI(MBB, MBBI, MI.getDebugLoc(),
             MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
-        .add(MI.getOperand(0)); // Can't use ImmBuilder because Operand(0) is branch target.
+        .add(MI.getOperand(
+            0)); // Can't use ImmBuilder because Operand(0) is branch target.
     RegBuilder(MOVE, Temple::T0); // copy destination to T0
     JLBuilder(Temple::ZERO, COND_ALWAYS, Temple::T0);
     MI.eraseFromParent();
