@@ -93,6 +93,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator &NextMBBI) {
   MachineInstr &MI = *MBBI;
   unsigned Opcode = MI.getOpcode();
+  dbgs() << "TempleExpandPseudo:" << MI << "\n";
   switch (Opcode) {
   default:
     return false;
@@ -428,8 +429,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // BGEU
   case Temple::SELECT: {
-      RegBuilder(NOR, Temple::ALLONE); // clear ACC
-      RegBuilder(ADD, GetOperandReg(3));
+    RegBuilder(NOR, Temple::ALLONE); // clear ACC
+    RegBuilder(ADD, GetOperandReg(3));
     RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rd(FALSEVAL)
 
     JLBuilder(Temple::T0, COND_NEVER, Temple::ZERO); // load program counter
@@ -444,16 +445,16 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, GetOperandReg(2));
     RegBuilder(MOVE, GetOperandReg(0)); // $ra(result) = $rc(TRUEVAL)
-                                     // jump here
+                                        // jump here
     MI.eraseFromParent();
     return true;
   } // SELECT
 
   case Temple::SETEQi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -470,10 +471,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETNEi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -489,10 +490,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETLTi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -508,10 +509,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETGTi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -527,10 +528,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETLEi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -546,10 +547,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETGEi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -565,10 +566,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETULTi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -584,10 +585,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETUGTi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -603,10 +604,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETULEi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -622,10 +623,10 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETUGEi: {
-    Register LHS = GetOperandReg(0);
+    Register LHS = GetOperandReg(1);
     Register RHS = Temple::T1;
 
-    ImmBuilder(SETI, GetOperandImm(1));
+    ImmBuilder(SETI, GetOperandImm(2));
     RegBuilder(MOVE, Temple::T1); // copy to temp reg
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
@@ -642,8 +643,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
   }
 
   case Temple::SETEQr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ONE);
@@ -658,8 +659,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETNEr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ZERO);
@@ -674,8 +675,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETLTr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ONE);
@@ -690,8 +691,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETGTr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ONE);
@@ -706,8 +707,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETLEr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ZERO);
@@ -722,8 +723,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETGEr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ZERO);
@@ -738,8 +739,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETULTr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ONE);
@@ -754,8 +755,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETUGTr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ONE);
@@ -770,8 +771,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETULEr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ZERO);
@@ -786,8 +787,8 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   }
   case Temple::SETUGEr: {
-    Register LHS = GetOperandReg(0);
-    Register RHS = GetOperandReg(1);
+    Register LHS = GetOperandReg(1);
+    Register RHS = GetOperandReg(2);
 
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
     RegBuilder(ADD, Temple::ZERO);
