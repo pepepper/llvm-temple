@@ -109,11 +109,11 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   default:
     llvm_unreachable("Unknown fixup kind!");
 
-    //   case FK_Data_1:
-    //   case FK_Data_2:
-    //   case FK_Data_4:
-    //   case FK_Data_8:
-    //     return Value;
+      case FK_Data_1:
+      case FK_Data_2:
+      case FK_Data_4:
+      case FK_Data_8:
+        return Value;
 
     //   case Temple::fixup_Temple_hi6:
     //     // Add 1 if bit 9 is 1, to compensate for low 10 bits being negative.

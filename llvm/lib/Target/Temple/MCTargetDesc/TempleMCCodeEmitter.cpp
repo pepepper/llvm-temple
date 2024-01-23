@@ -56,8 +56,11 @@ public:
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
   unsigned getBREncoding(const MCInst &MI, const MCOperand &MO,
-                             SmallVectorImpl<MCFixup> &Fixups,
-                             const MCSubtargetInfo &STI) const;
+                         SmallVectorImpl<MCFixup> &Fixups,
+                         const MCSubtargetInfo &STI) const;
+  unsigned encodeSimm16(const MCInst &MI, unsigned opno,
+                        SmallVectorImpl<MCFixup> &Fixups,
+                        const MCSubtargetInfo &STI) const;
 
   unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
                          SmallVectorImpl<MCFixup> &Fixups,
@@ -126,7 +129,7 @@ unsigned
 TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const {
-
+  dbgs() << MO << "\n";
   if (MO.isReg())
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
 
@@ -137,17 +140,30 @@ TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   return 0;
 }
 
-unsigned TempleMCCodeEmitter::getBREncoding(const MCInst &MI, const MCOperand &MO,
-  SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const
-{
-  if (MO.isReg() || MO.isImm()) return getMachineOpValue(MI, MO, Fixups, STI);
-
-  // Add a fixup for the branch target.
-  Fixups.push_back(MCFixup::create(1, MO.getExpr(), FK_Data_2));
-
+unsigned encodeSimm16(const MCInst &MI, unsigned opno,
+                       SmallVectorImpl<MCFixup> &Fixups,
+                       const MCSubtargetInfo &STI) {
+  if (MI.getOperand(opno).isImm()) {
+    assert(isUInt<16>(MI.getOperand(opno).getImm()) && "Invalid immediate");
+    uint16_t imm = MI.getOperand(opno).getImm();
+    return static_cast<unsigned>((imm<<8)|(imm>>8));
+  }
+  llvm_unreachable("not a immediate!");
   return 0;
 }
 
+unsigned TempleMCCodeEmitter::getBREncoding(const MCInst &MI,
+                                            const MCOperand &MO,
+                                            SmallVectorImpl<MCFixup> &Fixups,
+                                            const MCSubtargetInfo &STI) const {
+  //   if (MO.isReg() || MO.isImm()) return getMachineOpValue(MI, MO, Fixups,
+  //   STI);
+
+  // Add a fixup for the branch target.
+  Fixups.push_back(MCFixup::create(1, MO.getExpr(), FK_NONE));
+
+  return 0;
+}
 
 unsigned TempleMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,

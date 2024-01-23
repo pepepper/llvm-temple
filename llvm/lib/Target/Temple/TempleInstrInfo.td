@@ -60,6 +60,7 @@ class UImmAsmOperand<int width, string suffix = "">
 // Signed Operand
 def simm16 : Operand<i16> {
   let ParserMatchClass = SImmAsmOperand<16>;
+  let EncoderMethod = "encodeSimm16";
   let DecoderMethod = "decodeSimm16";
 }
 

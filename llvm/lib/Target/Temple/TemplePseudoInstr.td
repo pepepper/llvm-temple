@@ -21,15 +21,9 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   defm ADD : ALUI<add>;
   defm SUB : ALUI<sub>;
   /// Bitwise Instructions
-  def SRLi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc(unsigned)
-                    (ins GPR:$rb, i16imm:$imm16),
-                    [(set GPR:$ra, (srl GPR:$rb, imm:$imm16))]>;
-  def SLLi : Pseudo<(outs GPR:$ra), // $ra = $rb << $rc
-                    (ins GPR:$rb, i16imm:$imm16),
-                    [(set GPR:$ra, (shl GPR:$rb, imm:$imm16))]>;
-  def SRAi : Pseudo<(outs GPR:$ra), // $ra = $rb >> $rc (signed)
-                    (ins GPR:$rb, i16imm:$imm16),
-                    [(set GPR:$ra, (sra GPR:$rb, imm:$imm16))]>;               
+  defm SRL : ALUI<srl>; // $ra = $rb >> $rc (unsigned)
+  defm SLL : ALUI<shl>;// $ra = $rb << $rc
+  defm SRA : ALUI<sra>; // $ra = $rb >> $rc (signed)             
 
   defm AND : ALUI<and>;
   defm OR : ALUI<or>;
@@ -116,9 +110,12 @@ multiclass SETCC<CondCode cond> {
                  (ins GPR:$rb, GPR:$rc),
                  [(set GPR:$ra,(setcc GPR:$rb,GPR:$rc,cond))]>;
 
-  def i : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
+  def ri : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
                  (ins GPR:$rb, i16imm:$imm),
                  [(set GPR:$ra,(setcc GPR:$rb,imm:$imm,cond))]>;
+  def ir : Pseudo<(outs GPR:$ra), // $ra = imm16 ops $rb
+                 (ins i16imm:$imm, GPR:$rb),
+                 [(set GPR:$ra,(setcc imm:$imm,GPR:$rb,cond))]>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {

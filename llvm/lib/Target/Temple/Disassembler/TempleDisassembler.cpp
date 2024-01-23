@@ -87,15 +87,11 @@ DecodeStatus TempleDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
                                                 ArrayRef<uint8_t> Bytes,
                                                 uint64_t Address,
                                                 raw_ostream &CS) const {
-  if (Bytes.size() < 2) {
-    Size = 0;
-    return MCDisassembler::Fail;
-  }
 
   uint32_t Inst;
   DecodeStatus Result;
 
-  uint8_t opcode = (Bytes[0] & 0xe) >> 1;
+  uint8_t opcode = Bytes[0] >> 5;
 
   switch (opcode) {
   case 0b101: // I type(24bit)
