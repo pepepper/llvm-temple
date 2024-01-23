@@ -69,7 +69,7 @@ static DecodeStatus decodeSimm16(MCInst &Inst, uint64_t Imm, int64_t Address,
                                  const void *Decoder) {
   assert(isUInt<16>(Imm) && "Invalid immediate");
   // Sign-extend the number in the bottom N bits of Imm
-  Inst.addOperand(MCOperand::createImm(SignExtend64<16>(Imm)));
+  Inst.addOperand(MCOperand::createImm(SignExtend64<16>((Imm<<8)|(Imm>>8))));
   return MCDisassembler::Success;
 }
 

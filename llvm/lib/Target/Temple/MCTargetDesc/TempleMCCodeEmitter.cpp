@@ -140,11 +140,11 @@ TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   return 0;
 }
 
-unsigned encodeSimm16(const MCInst &MI, unsigned opno,
+unsigned TempleMCCodeEmitter::encodeSimm16(const MCInst &MI, unsigned opno,
                        SmallVectorImpl<MCFixup> &Fixups,
-                       const MCSubtargetInfo &STI) {
+                       const MCSubtargetInfo &STI) const{
   if (MI.getOperand(opno).isImm()) {
-    assert(isUInt<16>(MI.getOperand(opno).getImm()) && "Invalid immediate");
+    assert(isInt<16>(MI.getOperand(opno).getImm()) && "Invalid immediate");
     uint16_t imm = MI.getOperand(opno).getImm();
     return static_cast<unsigned>((imm<<8)|(imm>>8));
   }
