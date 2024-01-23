@@ -152,19 +152,6 @@ unsigned TempleMCCodeEmitter::encodeSimm16(const MCInst &MI, unsigned opno,
   return 0;
 }
 
-unsigned TempleMCCodeEmitter::getBREncoding(const MCInst &MI,
-                                            const MCOperand &MO,
-                                            SmallVectorImpl<MCFixup> &Fixups,
-                                            const MCSubtargetInfo &STI) const {
-  //   if (MO.isReg() || MO.isImm()) return getMachineOpValue(MI, MO, Fixups,
-  //   STI);
-
-  // Add a fixup for the branch target.
-  Fixups.push_back(MCFixup::create(1, MO.getExpr(), FK_NONE));
-
-  return 0;
-}
-
 unsigned TempleMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
                                             SmallVectorImpl<MCFixup> &Fixups,
                                             const MCSubtargetInfo &STI) const {

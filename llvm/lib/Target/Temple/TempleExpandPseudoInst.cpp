@@ -37,10 +37,8 @@ private:
   bool ExpandMBB(MachineBasicBlock &MBB);
   bool ExpandSETIGPR(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
                      MachineBasicBlock::iterator &NextMBBI);
-  void ExpandSETCC(MachineBasicBlock &MBB,
-                                       MachineBasicBlock::iterator MBBI,
-                                       unsigned Opcode, Register LHS,
-                                       Register RHS);
+  void ExpandSETCC(MachineBasicBlock &MBB, MachineBasicBlock::iterator MBBI,
+                   unsigned Opcode, Register LHS, Register RHS);
 };
 char TempleExpandPseudo::ID = 0;
 } // namespace

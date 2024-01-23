@@ -12,7 +12,7 @@
 namespace llvm {
 namespace Temple {
 enum Fixups {
-  // fixup_rv16k_invalid - used as a sentinel and a marker, must be last
+  // fixup_Temple_invalid - used as a sentinel and a marker, must be last
   // fixup
   fixup_Temple_invalid = FirstTargetFixupKind,
   NumTargetFixupKinds = fixup_Temple_invalid - FirstTargetFixupKind
