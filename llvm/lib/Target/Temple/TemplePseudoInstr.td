@@ -9,9 +9,9 @@ multiclass ALUI<SDNode ops> {
                  (ins GPR:$rb, GPR:$rc),
                  [(set GPR:$ra, (ops GPR:$rb, GPR:$rc))]>;
 
-  def i : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
-                 (ins GPR:$rb, i16imm:$imm16),
-                 [(set GPR:$ra, (ops GPR:$rb, imm:$imm16))]>;
+  // def i : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
+  //                (ins GPR:$rb, i16imm:$imm16),
+  //                [(set GPR:$ra, (ops GPR:$rb, imm:$imm16))]>;
 }
 
 let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
@@ -28,14 +28,18 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
   defm AND : ALUI<and>;
   defm OR : ALUI<or>;
   defm XOR : ALUI<xor>;
+
+  def MOV : Pseudo<(outs GPR:$ra),
+                  (ins i16imm:$imm16),
+                  [(set GPR:$ra,imm:$imm16)]>;
 }
 
 def STOREr : Pseudo<(outs), // *($rb) = $ra
                    (ins GPR:$ra, GPR:$rb),
                    [(store GPR:$ra, GPR:$rb)]>;
-def STOREi : Pseudo<(outs), // *($rb) = imm
-                   (ins i16imm:$imm, GPR:$rb),
-                   [(store imm:$imm, GPR:$rb)]>;
+// def STOREi : Pseudo<(outs), // *($rb) = imm
+//                    (ins i16imm:$imm, GPR:$rb),
+//                    [(store imm:$imm, GPR:$rb)]>;
 def LOAD : Pseudo<(outs GPR:$rb), // $rb = *($ra)
                   (ins GPR:$ra),
                   [(set GPR:$rb, (load GPR:$ra))]>;
@@ -110,12 +114,12 @@ multiclass SETCC<CondCode cond> {
                  (ins GPR:$rb, GPR:$rc),
                  [(set GPR:$ra,(setcc GPR:$rb,GPR:$rc,cond))]>;
 
-  def ri : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
-                 (ins GPR:$rb, i16imm:$imm),
-                 [(set GPR:$ra,(setcc GPR:$rb,imm:$imm,cond))]>;
-  def ir : Pseudo<(outs GPR:$ra), // $ra = imm16 ops $rb
-                 (ins i16imm:$imm, GPR:$rb),
-                 [(set GPR:$ra,(setcc imm:$imm,GPR:$rb,cond))]>;
+  // def ri : Pseudo<(outs GPR:$ra), // $ra = $rb ops imm16
+  //                (ins GPR:$rb, i16imm:$imm),
+  //                [(set GPR:$ra,(setcc GPR:$rb,imm:$imm,cond))]>;
+  // def ir : Pseudo<(outs GPR:$ra), // $ra = imm16 ops $rb
+  //                (ins i16imm:$imm, GPR:$rb),
+  //                [(set GPR:$ra,(setcc imm:$imm,GPR:$rb,cond))]>;
 }
 
 let hasSideEffects = 0, mayLoad = 0, mayStore = 0 in {

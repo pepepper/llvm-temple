@@ -59,7 +59,11 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
     EVT VT = Node->getValueType(0);
     SDValue TFI = CurDAG->getTargetFrameIndex(FI, VT);
 
-    ReplaceNode(Node, CurDAG->getMachineNode(Temple::ADDi, DL, VT, TFI, Imm));
+    ReplaceNode(Node,
+                CurDAG->getMachineNode(
+                    Temple::ADD, DL, VT, TFI,
+                    CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
+                                           Temple::ZERO, MVT::i16)));
     return;
   }
   case ISD::Constant: {
@@ -80,9 +84,10 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, New.getNode());
       return;
     } else {
-      SDValue New = CurDAG->getTargetConstant(ConstNode->getSExtValue(),
-      SDLoc(Node), MVT::i16);
-      ReplaceNode(Node, New.getNode());
+      ReplaceNode(Node, CurDAG->getMachineNode(
+                            Temple::MOV, DL, MVT::i16,
+                            CurDAG->getTargetConstant(ConstNode->getSExtValue(),
+                                                      DL, MVT::i16)));
       return;
     }
   }
