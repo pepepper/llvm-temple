@@ -54,7 +54,7 @@ let Namespace = "Temple" in {
   def T0 : TempleReg<20, "t0">, DwarfRegNum<[20]>;
   def T1 : TempleReg<21, "t1">, DwarfRegNum<[21]>;
   def T2 : TempleReg<22, "t2">, DwarfRegNum<[22]>;
-  def IW : TempleReg<23, "iw">, DwarfRegNum<[23]>;
+  def T3 : TempleReg<23, "t3">, DwarfRegNum<[23]>;
   def SP : TempleReg<24, "sp">, DwarfRegNum<[24]>;
   def RA : TempleReg<25, "ra">, DwarfRegNum<[25]>;
   def SPC : TempleReg<26, "spc">, DwarfRegNum<[26]>;

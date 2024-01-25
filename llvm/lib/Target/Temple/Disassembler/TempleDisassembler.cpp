@@ -49,7 +49,7 @@ static const unsigned GPRDecoderTable[] = {
     Temple::R5,    Temple::R6,  Temple::R7,  Temple::R8,   Temple::R9,
     Temple::R10,   Temple::R11, Temple::R12, Temple::R13,  Temple::R14,
     Temple::R15,   Temple::R16, Temple::R17, Temple::R18,  Temple::R19,
-    Temple::T0,    Temple::T1,  Temple::T2,  Temple::IW,   Temple::SP,
+    Temple::T0,    Temple::T1,  Temple::T2,  Temple::T3,   Temple::SP,
     Temple::RA,    Temple::SPC, Temple::IA,  Temple::ZERO, Temple::ONE,
     Temple::ALLONE};
 
