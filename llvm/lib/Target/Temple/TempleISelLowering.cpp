@@ -39,7 +39,7 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
 
   setStackPointerRegisterToSaveRestore(Temple::SP);
 
-  setOperationAction(ISD::SRA, MVT::i16, Expand);
+  // setOperationAction(ISD::SRA, MVT::i16, Expand);
   // setOperationAction(ISD::SHL, MVT::i16, Expand);
 
   for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
@@ -51,9 +51,9 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::BR_CC, MVT::i16, Custom);
-//   setOperationAction(ISD::BR, MVT::Other, Custom);
+  //   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
-  // setOperationAction(ISD::SETCC, MVT::i16, Expand);
+  setOperationAction(ISD::SETCC, MVT::i16, Expand);
   for (auto VT : {MVT::i1, MVT::i8})
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
 
@@ -92,9 +92,11 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 
   case ISD::BR_CC:
     return LowerBR_CC(Op, DAG);
+  case ISD::SETCC:
+    return LowerSETCC(Op, DAG);
 
-  // case ISD::BR:
-  //   return LowerBR(Op, DAG);
+    // case ISD::BR:
+    //   return LowerBR(Op, DAG);
 
     // case ISD::SELECT_CC:
     //   return LowerSELECT(Op, DAG);
@@ -116,7 +118,8 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 //   SDValue Chain = Op.getOperand(0);
 //   SDValue Dest = Op.getOperand(1);
 // //   MachineFunction &MF = DAG.getMachineFunction();
-// //   Register Reg = MF.getRegInfo().createVirtualRegister(&Temple::GPRRegClass);
+// //   Register Reg =
+// MF.getRegInfo().createVirtualRegister(&Temple::GPRRegClass);
 // //   Chain = DAG.getCopyToReg(Chain, dl, Reg, Dest);
 //   return DAG.getNode(ISD::BRIND, dl, VT, Chain, Dest);
 // }
@@ -136,7 +139,7 @@ SDValue TempleTargetLowering::LowerOperation(SDValue Op,
 // }
 
 SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
-   
+
   SDLoc dl(Op);
   EVT VT = Op.getValueType();
 
@@ -148,7 +151,7 @@ SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
     return SDValue(DAG.getMachineNode(Temple::BEQ, dl, VT, Op.getOperand(4), LHS, RHS),0);
   case ISD::SETNE:{
     SDValue a=SDValue(DAG.getMachineNode(Temple::BNE, dl, VT, Op.getOperand(4), LHS, RHS),0);
-    a.dump(&DAG);
+a.dump(&DAG);
     return a;
   }
   case ISD::SETGT:
@@ -164,7 +167,54 @@ SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   case ISD::SETUGE:
     return SDValue(DAG.getMachineNode(Temple::BGEU, dl, VT, Op.getOperand(4), LHS, RHS),0);
   default:
-  dbgs()<<"LowerBR_CC:lowering failed?\n";
+    dbgs()<<"LowerBR_CC:lowering failed?\n";
+    break;
+  }
+}
+
+SDValue TempleTargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
+
+  SDLoc dl(Op);
+  EVT VT = Op.getValueType();
+
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(2))->get();
+  switch (CC) {
+  case ISD::SETEQ:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETEQr, dl, VT, LHS, RHS), 0);
+  case ISD::SETNE:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETNEr, dl, VT, LHS, RHS), 0);
+
+  case ISD::SETGT:
+    std::swap(LHS, RHS);
+  case ISD::SETLT:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETLTr, dl, VT, LHS, RHS), 0);
+
+  case ISD::SETLE:
+    std::swap(LHS, RHS);
+  case ISD::SETGE:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETGEr, dl, VT, LHS, RHS), 0);
+
+  case ISD::SETUGT:
+    std::swap(LHS, RHS);
+  case ISD::SETULT:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETULTr, dl, VT, LHS, RHS),
+        0);
+
+  case ISD::SETULE:
+    std::swap(LHS, RHS);
+  case ISD::SETUGE:
+    return SDValue(
+        DAG.getMachineNode(Temple::SETUGEr, dl, VT, LHS, RHS),
+        0);
+  default:
+    dbgs() << "LowerSETCC:lowering failed?\n";
     break;
   }
 }
@@ -181,7 +231,7 @@ SDValue TempleTargetLowering::LowerGlobalAddress(SDValue Op,
     report_fatal_error("Unable to LowerGlobalAddress");
 
   SDValue GA = DAG.getTargetGlobalAddress(GV, DL, Ty, Offset);
-  SDValue MN = SDValue(DAG.getMachineNode(Temple::SETI, DL, Ty, GA), 0);
+  SDValue MN = SDValue(DAG.getMachineNode(Temple::MOV, DL, Ty, GA), 0);
   return MN;
 }
 

@@ -61,7 +61,7 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
 
     ReplaceNode(Node,
                 CurDAG->getMachineNode(
-                    Temple::ADD, DL, VT, TFI,
+                    Temple::ADDr, DL, VT, TFI,
                     CurDAG->getCopyFromReg(CurDAG->getEntryNode(), SDLoc(Node),
                                            Temple::ZERO, MVT::i16)));
     return;
@@ -91,7 +91,7 @@ void TempleDAGToDAGISel::Select(SDNode *Node) {
       return;
     }
   }
-  case TempleISD::RET: {
+  case TempleISD::RET: { // TODO: is movable to IselLowering?
     ReplaceNode(Node,
                 CurDAG->getMachineNode(Temple::RET, DL, Node->getValueType(0),
                                        Node->getOperand(0)));
