@@ -37,6 +37,7 @@
 #include "Targets/Sparc.h"
 #include "Targets/SystemZ.h"
 #include "Targets/TCE.h"
+#include "Targets/Temple.h"
 #include "Targets/VE.h"
 #include "Targets/WebAssembly.h"
 #include "Targets/X86.h"
@@ -686,6 +687,8 @@ TargetInfo *AllocateTarget(const llvm::Triple &Triple,
     default:
       return new LoongArch64TargetInfo(Triple, Opts);
     }
+    case llvm::Triple::temple:
+    return new TempleTargetInfo(Triple, Opts);
   }
 }
 } // namespace targets
