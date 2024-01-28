@@ -203,7 +203,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator &NextMBBI) {
   MachineInstr &MI = *MBBI;
   unsigned Opcode = MI.getOpcode();
-  dbgs() << "TempleExpandPseudo:" << MI << "\n";
+//   dbgs() << "TempleExpandPseudo:" << MI << "\n";
   switch (Opcode) {
   default:
     return false;
