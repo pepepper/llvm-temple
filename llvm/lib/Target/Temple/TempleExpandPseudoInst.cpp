@@ -208,7 +208,29 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
   default:
     return false;
   case Temple::MOV: {
+    switch (MI.getOperand(1).getType()) {
+    case MachineOperand::MO_GlobalAddress: {
+      const GlobalValue *GV = MI.getOperand(1).getGlobal();
+      int64_t Offs = MI.getOperand(1).getOffset();
+      unsigned TF = MI.getOperand(1).getTargetFlags();
+      BuildMI(MBB, MBBI, MI.getDebugLoc(),
+              MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+          .addGlobalAddress(GV, Offs, TF);
+      break;
+    }
+    case MachineOperand::MO_BlockAddress: {
+      const BlockAddress *BA = MI.getOperand(1).getBlockAddress();
+      unsigned TF = MI.getOperand(1).getTargetFlags();
+      BuildMI(MBB, MBBI, MI.getDebugLoc(),
+              MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SETI))
+          .add(MachineOperand::CreateBA(BA, TF));
+      break;
+    }
+    case MachineOperand::MO_Immediate: {
     ImmBuilder(SETI, GetOperandImm(1));
+      break;
+    }
+    }
     RegBuilder(MOVE, GetOperandReg(0));
     break;
   }

@@ -39,13 +39,10 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
 
   setStackPointerRegisterToSaveRestore(Temple::SP);
 
-  // setOperationAction(ISD::SRA, MVT::i16, Expand);
-  // setOperationAction(ISD::SHL, MVT::i16, Expand);
-
-  for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD})
+  for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD}){
     setLoadExtAction(N, MVT::i16, MVT::i1, Promote);
+  }
 
-  //   setOperationAction(ISD::SUBC, MVT::i16, Expand);
   // TODO: add all necessary setOperationAction calls.
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
   setOperationAction(ISD::SELECT_CC, MVT::i16, Expand);
@@ -53,7 +50,7 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BR_CC, MVT::i16, Custom);
   //   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::BR_JT, MVT::Other, Expand);
-  setOperationAction(ISD::SETCC, MVT::i16, Expand);
+  setOperationAction(ISD::SETCC, MVT::i16, Custom);
   for (auto VT : {MVT::i1, MVT::i8})
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
 
