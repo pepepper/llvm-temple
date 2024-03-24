@@ -73,7 +73,6 @@ public:
 
   bool addInstSelector() override;
   void addPreEmitPass() override;
-  void addPreSched2() override;
 };
 } // namespace
 
@@ -87,9 +86,7 @@ bool TemplePassConfig::addInstSelector() {
   return false;
 }
 
-void TemplePassConfig::addPreEmitPass() { addPass(&BranchRelaxationPassID); }
-
-void TemplePassConfig::addPreSched2() {
+void TemplePassConfig::addPreEmitPass() { addPass(&BranchRelaxationPassID);
   addPass(createTempleExpandPseudoPass());
   // Future Work: 連続計算時の最適化
 }

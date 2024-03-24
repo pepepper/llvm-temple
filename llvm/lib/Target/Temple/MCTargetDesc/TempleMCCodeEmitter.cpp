@@ -135,7 +135,7 @@ TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
 }
 
 unsigned TempleMCCodeEmitter::encodeSimm16(const MCInst &MI, unsigned opno,
-                       SmallVectorImpl<MCFixup> &Fixups,
+                                           SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
   if (MI.getOperand(opno).isImm()) {
     assert(isInt<16>(MI.getOperand(opno).getImm()) && "Invalid immediate");
@@ -143,52 +143,42 @@ unsigned TempleMCCodeEmitter::encodeSimm16(const MCInst &MI, unsigned opno,
     return static_cast<unsigned>((imm << 8) | (imm >> 8));
   } else if (MI.getOperand(opno).isExpr()) {
     const MCExpr *Expr = MI.getOperand(opno).getExpr();
-  MCExpr::ExprKind Kind = Expr->getKind();
-  Temple::Fixups FixupKind = Temple::fixup_Temple_invalid;
-  unsigned Offset = 0;
+    MCExpr::ExprKind Kind = Expr->getKind();
+    Temple::Fixups FixupKind = Temple::fixup_Temple_invalid;
+    unsigned Offset = 0;
 
-  if (Kind == MCExpr::Target) {
-    const TempleMCExpr *TempleExpr = cast<TempleMCExpr>(Expr);
+    if (Kind == MCExpr::Target) {
+      const TempleMCExpr *TempleExpr = cast<TempleMCExpr>(Expr);
 
-    switch (TempleExpr->getKind()) {
-    case TempleMCExpr::VK_Temple_None:
-    case TempleMCExpr::VK_Temple_Invalid:
-      llvm_unreachable("Unhandled fixup kind!");
+      switch (TempleExpr->getKind()) {
+      case TempleMCExpr::VK_Temple_None:
+      case TempleMCExpr::VK_Temple_Invalid:
+        llvm_unreachable("Unhandled fixup kind!");
 
-      // case TempleMCExpr::VK_Temple_LO:
-      //   FixupKind = Temple::fixup_Temple_lo10;
-      //   break;
+        // case TempleMCExpr::VK_Temple_LO:
+        //   FixupKind = Temple::fixup_Temple_lo10;
+        //   break;
 
-      // case TempleMCExpr::VK_Temple_HI:
-      //   FixupKind = Temple::fixup_Temple_hi6;
-      //   break;
+        // case TempleMCExpr::VK_Temple_HI:
+        //   FixupKind = Temple::fixup_Temple_hi6;
+        //   break;
+      }
+    } else if (Kind == MCExpr::SymbolRef &&
+               cast<MCSymbolRefExpr>(Expr)->getKind() ==
+                   MCSymbolRefExpr::VK_None) {
+          FixupKind = Temple::fixup_Temple_regavoid;
     }
-  } else if (Kind == MCExpr::SymbolRef &&
-             cast<MCSymbolRefExpr>(Expr)->getKind() ==
-                 MCSymbolRefExpr::VK_None) {
-    switch (MI.getOpcode()) {
-      // case Temple::JS:
-      // case Temple::JSAL:
-      //   FixupKind = Temple::fixup_Temple_pcrel_11;
-      //   break;
 
-      // case Temple::BEQ:
-      // case Temple::BNE:
-      // case Temple::BLT:
-      // case Temple::BLTU:
-      // case Temple::BLE:
-      // case Temple::BLEU:
-      //   FixupKind = Temple::fixup_Temple_pcrel_10;
-      //   break;
-    }
+    assert(FixupKind != Temple::fixup_Temple_invalid &&
+           "Unhandled expression!");
+
+    Fixups.push_back(MCFixup::create(
+        Offset, Expr, static_cast<MCFixupKind>(FixupKind), MI.getLoc()));
+    ++MCNumFixups;
+
+    return 0;
   }
-
-  assert(FixupKind != Temple::fixup_Temple_invalid && "Unhandled expression!");
-
-  Fixups.push_back(MCFixup::create(
-      Offset, Expr, static_cast<MCFixupKind>(FixupKind), MI.getLoc()));
-  ++MCNumFixups;
-
+  llvm_unreachable("not a immediate!");
   return 0;
 }
 

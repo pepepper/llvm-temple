@@ -14,7 +14,8 @@ namespace Temple {
 enum Fixups {
   // fixup_Temple_invalid - used as a sentinel and a marker, must be last
   // fixup
-  fixup_Temple_invalid = FirstTargetFixupKind,
+  fixup_Temple_regavoid = FirstTargetFixupKind,
+  fixup_Temple_invalid,
   NumTargetFixupKinds = fixup_Temple_invalid - FirstTargetFixupKind
 };
 } // end namespace Temple

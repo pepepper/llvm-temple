@@ -38,6 +38,8 @@ unsigned TempleELFObjectWriter::getRelocType(MCContext &Ctx,
   switch ((unsigned)Fixup.getKind()) {
   default:
     llvm_unreachable("invalid fixup kind!");
+    case Temple::fixup_Temple_regavoid:
+      return ELF::R_Temple_ADDR;
   }
 }
 

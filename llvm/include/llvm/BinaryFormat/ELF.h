@@ -947,6 +947,10 @@ enum {
 #include "ELFRelocs/Xtensa.def"
 };
 
+// ELF Relocation types for Temple
+enum {
+#include "ELFRelocs/Temple.def"
+};
 #undef ELF_RELOC
 
 // Section header.

@@ -51,32 +51,16 @@ public:
       return MCAsmBackend::getFixupKindInfo(Kind);
 
     // MCFixupKindInfo{name, offset, bits, flag}
-    // switch ((unsigned)Kind) {
-    // case Temple::fixup_Temple_hi6: {
-    //   const static MCFixupKindInfo info{"fixup_Temple_hi6", 0, 16, 0};
-    //   return info;
-    // }
+    switch ((unsigned)Kind) {
+    case Temple::fixup_Temple_regavoid: {
+      const static MCFixupKindInfo info{"fixup_Temple_regavoid", 0, 16, 0};
+      return info;
+    }
 
-    // case Temple::fixup_Temple_lo10: {
-    //   const static MCFixupKindInfo info{"fixup_Temple_lo10", 0, 24, 0};
-    //   return info;
-    // }
 
-    // case Temple::fixup_Temple_pcrel_10: {
-    //   const static MCFixupKindInfo info{"fixup_Temple_pcrel_10", 0, 24,
-    //                                     MCFixupKindInfo::FKF_IsPCRel};
-    //   return info;
-    // }
-
-    // case Temple::fixup_Temple_pcrel_11: {
-    //   const static MCFixupKindInfo info{"fixup_Temple_pcrel_11", 5, 11,
-    //                                     MCFixupKindInfo::FKF_IsPCRel};
-    //   return info;
-    // }
-
-    // default:
-    //   llvm_unreachable("Invalid kind!");
-    // }
+    default:
+      llvm_unreachable("Invalid kind!");
+    }
   }
 
   bool mayNeedRelaxation(const MCInst &Inst,
@@ -109,37 +93,14 @@ static uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
   default:
     llvm_unreachable("Unknown fixup kind!");
 
-      case FK_Data_1:
-      case FK_Data_2:
-      case FK_Data_4:
-      case FK_Data_8:
-        return Value;
+  case FK_Data_1:
+  case FK_Data_2:
+  case FK_Data_4:
+  case FK_Data_8:
+    return Value;
+  case Temple::fixup_Temple_regavoid:
+    return Value + 0x56;
 
-    //   case Temple::fixup_Temple_hi6:
-    //     // Add 1 if bit 9 is 1, to compensate for low 10 bits being negative.
-    //     Value = ((Value + 0x200) >> 10) & 0x3f;
-    //     // Need to produce (imm[3:0] << 12)|(imm[5:4] << 6) from the 6-bit
-    //     Value. return ((Value & 0xf) << 12) | (((Value >> 4) & 3) << 6);
-
-    //   case Temple::fixup_Temple_lo10:
-    //     Value = Value & 0x3ff;
-    //     // Need to produce (imm[7:0] << 16)|(imm[9:8] << 6)
-    //     return ((Value & 0xff) << 16) | (((Value >> 8) & 3) << 6);
-
-    //   case Temple::fixup_Temple_pcrel_10:
-    //     if (!isInt<10>(Value))
-    //       Ctx.reportError(Fixup.getLoc(),
-    //                       "fixup value out of range
-    //                       (fixup_Temple_pcrel_10)");
-    //     // Need to produce (imm[7:0] << 16)|(imm[9:8] << 6) from the 10-bit
-    //     Value. return ((Value & 0xff) << 16) | (((Value >> 8) & 0x3) << 6);
-
-    //   case Temple::fixup_Temple_pcrel_11:
-    //     if (!isInt<11>(Value))
-    //       Ctx.reportError(Fixup.getLoc(),
-    //                       "fixup value out of range
-    //                       (fixup_Temple_pcrel_11)");
-    //     return Value;
   }
 }
 
