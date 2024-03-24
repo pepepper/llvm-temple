@@ -100,7 +100,7 @@ class FFnoOP<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
 
 //@class FJ {
 //===----------------------------------------------------------------------===//
-// Format J instruction class in Temple : <|opcode|ra|cond|rb|>
+// Format J instruction class in Temple : <|opcode|rb|cond|ra|>
 //===----------------------------------------------------------------------===//
 
 class FJ<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
@@ -114,9 +114,9 @@ class FJ<bits<3> op, dag outs, dag ins, string asmstr, InstrItinClass itin,
   let Size = 2;
 
   let Inst{15 - 13} = op;
-  let Inst{12 - 8} = ra;
+  let Inst{12 - 8} = rb;
   let Inst{7 - 5} = cond;
-  let Inst{4 - 0} = rb;
+  let Inst{4 - 0} = ra;
 }
 //@class FJ }
 

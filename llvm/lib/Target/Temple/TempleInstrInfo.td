@@ -146,7 +146,7 @@ let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
                 (ins cond3
                  : $cond, GPR
                  : $rb),
-                "jl\t$ra, $cond, $rb", IIBranch>;
+                "jl\t$rb, $cond, $ra", IIBranch>;
   }
 }
 
