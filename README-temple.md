@@ -8,8 +8,10 @@ Ubuntuでのビルド方法です
   - `sudo apt install cmake ninja-build clang lld`
 - ソースコードの取得
   - `git clone https://github.com/pepepper/llvm-temple`
+- ブランチのチェックアウト
+  - `cd llvm-temple && git checkout temple`
 - ビルドフォルダの作成
-  - `cd llvm-temple && mkdir build && cd build`
+  - `mkdir build && cd build`
 - ビルドの設定
   - `cmake -G Ninja 
     -DLLVM_ENABLE_PROJECTS="clang;lld" 
@@ -25,11 +27,10 @@ Ubuntuでのビルド方法です
   - `ninja`
 
 ## 使用方法
-- C言語からLLVM IRを生成する
-  - `clang -c -S -emit-llvm (C言語ソースファイル)`
-- LLVM IRからTempleアセンブリを生成する
+- C言語からTempleアセンブリを生成する
   - buildディレクトリ内にいることを確認
-  - `bin/llc --march temple -filetype=asm (LLVM IRのファイル) -o (出力先)`
+  - `bin/clang -target temple -S -emit-llvm (C言語ソースファイル)`
+
 
 ## 現状不可能なこと
 - C言語における8bitの型(char等)の使用
