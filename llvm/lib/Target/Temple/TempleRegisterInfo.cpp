@@ -57,8 +57,6 @@ bool TempleRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
   Register FrameReg;
 
-  MI.print(dbgs());
-
   int Offset = getFrameLowering(MF)
                    ->getFrameIndexReference(MF, FrameIndex, FrameReg)
                    .getFixed() +

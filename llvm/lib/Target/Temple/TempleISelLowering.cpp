@@ -39,7 +39,7 @@ TempleTargetLowering::TempleTargetLowering(const TargetMachine &TM,
 
   setStackPointerRegisterToSaveRestore(Temple::SP);
 
-  for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD}){
+  for (auto N : {ISD::EXTLOAD, ISD::SEXTLOAD, ISD::ZEXTLOAD}) {
     setLoadExtAction(N, MVT::i16, MVT::i1, Promote);
   }
 
@@ -145,26 +145,34 @@ SDValue TempleTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
   switch (CC) {
   case ISD::SETEQ:
-    return SDValue(DAG.getMachineNode(Temple::BEQ, dl, VT, Op.getOperand(4), LHS, RHS),0);
-  case ISD::SETNE:{
-    SDValue a=SDValue(DAG.getMachineNode(Temple::BNE, dl, VT, Op.getOperand(4), LHS, RHS),0);
-a.dump(&DAG);
+    return SDValue(
+        DAG.getMachineNode(Temple::BEQ, dl, VT, Op.getOperand(4), LHS, RHS), 0);
+  case ISD::SETNE: {
+    SDValue a = SDValue(
+        DAG.getMachineNode(Temple::BNE, dl, VT, Op.getOperand(4), LHS, RHS), 0);
+    a.dump(&DAG);
     return a;
   }
   case ISD::SETGT:
     std::swap(LHS, RHS);
   case ISD::SETLT:
-    return SDValue(DAG.getMachineNode(Temple::BLT, dl, VT, Op.getOperand(4), LHS, RHS),0);
+    return SDValue(
+        DAG.getMachineNode(Temple::BLT, dl, VT, Op.getOperand(4), LHS, RHS), 0);
   case ISD::SETLE:
     std::swap(LHS, RHS);
   case ISD::SETGE:
-    return SDValue(DAG.getMachineNode(Temple::BGE, dl, VT, Op.getOperand(4), LHS, RHS),0);
+    return SDValue(
+        DAG.getMachineNode(Temple::BGE, dl, VT, Op.getOperand(4), LHS, RHS), 0);
   case ISD::SETULT:
-    return SDValue(DAG.getMachineNode(Temple::BLTU, dl, VT, Op.getOperand(4), LHS, RHS),0);
+    return SDValue(
+        DAG.getMachineNode(Temple::BLTU, dl, VT, Op.getOperand(4), LHS, RHS),
+        0);
   case ISD::SETUGE:
-    return SDValue(DAG.getMachineNode(Temple::BGEU, dl, VT, Op.getOperand(4), LHS, RHS),0);
+    return SDValue(
+        DAG.getMachineNode(Temple::BGEU, dl, VT, Op.getOperand(4), LHS, RHS),
+        0);
   default:
-    dbgs()<<"LowerBR_CC:lowering failed?\n";
+    dbgs() << "LowerBR_CC:lowering failed?\n";
     break;
   }
 }
@@ -179,37 +187,29 @@ SDValue TempleTargetLowering::LowerSETCC(SDValue Op, SelectionDAG &DAG) const {
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(2))->get();
   switch (CC) {
   case ISD::SETEQ:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETEQr, dl, VT, LHS, RHS), 0);
+    return SDValue(DAG.getMachineNode(Temple::SETEQr, dl, VT, LHS, RHS), 0);
   case ISD::SETNE:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETNEr, dl, VT, LHS, RHS), 0);
+    return SDValue(DAG.getMachineNode(Temple::SETNEr, dl, VT, LHS, RHS), 0);
 
   case ISD::SETGT:
     std::swap(LHS, RHS);
   case ISD::SETLT:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETLTr, dl, VT, LHS, RHS), 0);
+    return SDValue(DAG.getMachineNode(Temple::SETLTr, dl, VT, LHS, RHS), 0);
 
   case ISD::SETLE:
     std::swap(LHS, RHS);
   case ISD::SETGE:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETGEr, dl, VT, LHS, RHS), 0);
+    return SDValue(DAG.getMachineNode(Temple::SETGEr, dl, VT, LHS, RHS), 0);
 
   case ISD::SETUGT:
     std::swap(LHS, RHS);
   case ISD::SETULT:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETULTr, dl, VT, LHS, RHS),
-        0);
+    return SDValue(DAG.getMachineNode(Temple::SETULTr, dl, VT, LHS, RHS), 0);
 
   case ISD::SETULE:
     std::swap(LHS, RHS);
   case ISD::SETUGE:
-    return SDValue(
-        DAG.getMachineNode(Temple::SETUGEr, dl, VT, LHS, RHS),
-        0);
+    return SDValue(DAG.getMachineNode(Temple::SETUGEr, dl, VT, LHS, RHS), 0);
   default:
     dbgs() << "LowerSETCC:lowering failed?\n";
     break;

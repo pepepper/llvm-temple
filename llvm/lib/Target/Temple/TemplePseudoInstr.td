@@ -30,7 +30,7 @@ let Defs = [FLAG], mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
                   [(set GPR:$ra,imm:$imm16)]>;
 }
 
-def STOREr : Pseudo<(outs), // *($rb) = $ra
+def STORE : Pseudo<(outs), // *($rb) = $ra
                    (ins GPR:$ra, GPR:$rb),
                    [(store GPR:$ra, GPR:$rb)]>;
 def LOAD : Pseudo<(outs GPR:$rb), // $rb = *($ra)
@@ -38,35 +38,18 @@ def LOAD : Pseudo<(outs GPR:$rb), // $rb = *($ra)
                   [(set GPR:$rb, (load GPR:$ra))]>;
 
 /// Branch Instructions
-let isIndirectBranch = 1, mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
-  let Uses = [FLAG] in {
-    def JLI : Pseudo<(outs), (ins cond3:$cond, GPR:$rb)>,
-              PseudoInstExpansion<(JL ALLONE, cond3:$cond, GPR:$rb)>;
-    def JLZero : Pseudo<(outs GPR:$ra),
-                        (ins GPR:$rb)>,
-                 PseudoInstExpansion<(JL GPR:$ra, 4, GPR:$rb)>;
-    def JLNeg : Pseudo<(outs GPR:$ra),
-                       (ins GPR:$rb)>,
-                PseudoInstExpansion<(JL GPR:$ra, 2, GPR:$rb)>;
-    def JLCarry : Pseudo<(outs GPR:$ra),
-                         (ins GPR:$rb)>,
-                  PseudoInstExpansion<(JL GPR:$ra, 1, GPR:$rb)>;
-  }
-  let isBarrier = 1, isTerminator = 1 in {
-    def JLAlways : Pseudo<(outs GPR:$ra),
-                          (ins GPR:$rb)>,
-                   PseudoInstExpansion<(JL GPR:$ra, 7, GPR:$rb)>;
+let mayStore = 0, mayLoad = 0, hasSideEffects = 0 in {
+  let isBranch = 1, isBarrier = 1, isTerminator = 1 in {
+    let  isIndirectBranch = 1 in {
     def BRIND : Pseudo<(outs),
                         (ins GPR:$ra),
                         [(brind GPR:$ra)]>,
                  PseudoInstExpansion<(JL ZERO, 7, GPR:$ra)>;
+    }
     def BR : Pseudo<(outs),
                         (ins brtarget:$ra),
                         [(br bb:$ra)]>;
   }
-  def JLNever : Pseudo<(outs GPR:$ra),
-                       (ins)>,
-                PseudoInstExpansion<(JL GPR:$ra, 0, ZERO)>;
 }
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
@@ -80,7 +63,7 @@ let isCall = 1, isBarrier = 1,hasSideEffects = 0,
              PseudoInstExpansion<(JL RA, 7, GPR:$ra)>;
 }
 
-let isIndirectBranch = 1, isTerminator = 1, hasSideEffects = 0, mayLoad = 0,
+let isBranch = 1, isIndirectBranch = 1, isTerminator = 1, hasSideEffects = 0, mayLoad = 0,
     mayStore = 0 in {
   def BEQ : Pseudo<(outs),
                    (ins brtarget:$rc, GPR:$ra, GPR:$rb),

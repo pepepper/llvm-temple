@@ -203,7 +203,6 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator &NextMBBI) {
   MachineInstr &MI = *MBBI;
   unsigned Opcode = MI.getOpcode();
-//   dbgs() << "TempleExpandPseudo:" << MI << "\n";
   switch (Opcode) {
   default:
     return false;
@@ -247,19 +246,6 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     break;
 
   } // SUBr
-
-    // case Temple::SRLi: {               //$ra = SRL x imm16
-    //   RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    //   RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
-    //   for (int i = 0; i < MI.getOperand(2).getImm(); i++) {
-    //     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-    //             MBB.getParent()->getSubtarget().getInstrInfo()->get(
-    //                 Temple::SRL)); // ACC >> 1
-    //   }                            // repeat SRL
-
-    //   RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
-    // } // SRLi
 
   case Temple::SRLr: {
     RegBuilder(NOR, Temple::ALLONE);    // clear ACC
@@ -387,41 +373,6 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
     return true;
   } // SRLr
 
-    // case Temple::SLLi: {               //$ra = ($rb+$rb) x imm16
-    //   RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    //   RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
-    //   for (int i = 0; i < MI.getOperand(2).getImm(); i++) {
-    //     RegBuilder(MOVE, Temple::T0);
-    //     RegBuilder(ADD, Temple::T0);
-    //   } // ACC = ACC*2
-
-    //   RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
-    // } // SLLi
-
-    // case Temple::SRAi: {               //$ra = SRA * imm16
-    //                                    // TODO: optimization
-    //   RegBuilder(NOR, Temple::ALLONE); // clear ACC
-
-    //   RegBuilder(ADD, Temple::ALLONE);
-    //   BuildMI(MBB, MBBI, MI.getDebugLoc(),
-    //           MBB.getParent()->getSubtarget().getInstrInfo()->get(Temple::SRL));
-    //   RegBuilder(NOR, GetOperandReg(1));
-    //   RegBuilder(MOVE, Temple::T1); // get MSB
-
-    //   RegBuilder(NOR, Temple::ALLONE);   // clear ACC
-    //   RegBuilder(ADD, GetOperandReg(1)); // ACC = $rb
-
-    //   for (int i = 0; i < MI.getOperand(2).getImm(); i++) {
-    //     BuildMI(MBB, MBBI, MI.getDebugLoc(),
-    //             MBB.getParent()->getSubtarget().getInstrInfo()->get(
-    //                 Temple::SRL));   // ACC >> 1
-    //     RegBuilder(ADD, Temple::T1); // copy MSB
-    //   }
-
-    //   RegBuilder(MOVE, GetOperandReg(0)); // move to $ra
-    // } // SRAi
-
   case Temple::ANDr: {               //$ra = ($rb NOR 0) NOR ($rc NOR 0)
     RegBuilder(NOR, Temple::ALLONE); // clear ACC
 
@@ -476,7 +427,7 @@ bool TempleExpandPseudo::ExpandMI(MachineBasicBlock &MBB,
 
   } // XORr
 
-  case Temple::STOREr: {
+  case Temple::STORE: {
     ImmBuilder(SETI, 0);
     RegBuilder(ADD, GetOperandReg(0));
     RegBuilder(SD, GetOperandReg(1));

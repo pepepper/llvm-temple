@@ -55,16 +55,10 @@ public:
   unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
-  unsigned getBREncoding(const MCInst &MI, const MCOperand &MO,
-                         SmallVectorImpl<MCFixup> &Fixups,
-                         const MCSubtargetInfo &STI) const;
   unsigned encodeSimm16(const MCInst &MI, unsigned opno,
                         SmallVectorImpl<MCFixup> &Fixups,
                         const MCSubtargetInfo &STI) const;
 
-  unsigned getImmOpValue(const MCInst &MI, unsigned OpNo,
-                         SmallVectorImpl<MCFixup> &Fixups,
-                         const MCSubtargetInfo &STI) const;
 
 private:
   void expandHlt(const MCInst &MI, raw_ostream &OS,
@@ -129,7 +123,7 @@ unsigned
 TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                        SmallVectorImpl<MCFixup> &Fixups,
                                        const MCSubtargetInfo &STI) const {
-  dbgs() << MO << "\n";
+
   if (MO.isReg())
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
 
@@ -142,27 +136,13 @@ TempleMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
 
 unsigned TempleMCCodeEmitter::encodeSimm16(const MCInst &MI, unsigned opno,
                        SmallVectorImpl<MCFixup> &Fixups,
-                       const MCSubtargetInfo &STI) const{
+                                           const MCSubtargetInfo &STI) const {
   if (MI.getOperand(opno).isImm()) {
     assert(isInt<16>(MI.getOperand(opno).getImm()) && "Invalid immediate");
     uint16_t imm = MI.getOperand(opno).getImm();
-    return static_cast<unsigned>((imm<<8)|(imm>>8));
-  }
-  llvm_unreachable("not a immediate!");
-  return 0;
-}
-
-unsigned TempleMCCodeEmitter::getImmOpValue(const MCInst &MI, unsigned OpNo,
-                                            SmallVectorImpl<MCFixup> &Fixups,
-                                            const MCSubtargetInfo &STI) const {
-  const MCOperand &MO = MI.getOperand(OpNo);
-
-  if (MO.isImm())
-    return MO.getImm();
-
-  assert(MO.isExpr() && "getImmOpValue expects only expressions or immediates");
-
-  const MCExpr *Expr = MO.getExpr();
+    return static_cast<unsigned>((imm << 8) | (imm >> 8));
+  } else if (MI.getOperand(opno).isExpr()) {
+    const MCExpr *Expr = MI.getOperand(opno).getExpr();
   MCExpr::ExprKind Kind = Expr->getKind();
   Temple::Fixups FixupKind = Temple::fixup_Temple_invalid;
   unsigned Offset = 0;
